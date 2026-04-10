@@ -54,25 +54,105 @@ const SHAPES = [
 ]
 
 // ─── SVG Atoms ───────────────────────────────────────────────────────────────
-const FaceRect = ({ x, y, w, h, lbl }) => (
-  <g>
-    <rect x={x} y={y} width={w} height={h} fill={FF} stroke={FS} strokeWidth={FSW} />
-    {lbl && (
-      <text x={x + w / 2} y={y + h / 2} textAnchor="middle" dominantBaseline="middle"
-        fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">{lbl}</text>
-    )}
-  </g>
-)
+const FaceRect = ({ x, y, w, h, lbl, flaps = [] }) => {
+  const flapW = 8 // lebar flap
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} fill={FF} stroke={FS} strokeWidth={FSW} />
+      {/* Flap tabs */}
+      {flaps.includes('top') && (
+        <polygon 
+          points={`${x},${y} ${x+w},${y} ${x+w-flapW},${y-flapW} ${x+flapW},${y-flapW}`}
+          fill="rgba(99,102,241,0.04)" 
+          stroke={FS} 
+          strokeWidth={FSW}
+          strokeDasharray="3,2"
+        />
+      )}
+      {flaps.includes('bottom') && (
+        <polygon 
+          points={`${x},${y+h} ${x+w},${y+h} ${x+w-flapW},${y+h+flapW} ${x+flapW},${y+h+flapW}`}
+          fill="rgba(99,102,241,0.04)" 
+          stroke={FS} 
+          strokeWidth={FSW}
+          strokeDasharray="3,2"
+        />
+      )}
+      {flaps.includes('left') && (
+        <polygon 
+          points={`${x},${y} ${x},${y+h} ${x-flapW},${y+h-flapW} ${x-flapW},${y+flapW}`}
+          fill="rgba(99,102,241,0.04)" 
+          stroke={FS} 
+          strokeWidth={FSW}
+          strokeDasharray="3,2"
+        />
+      )}
+      {flaps.includes('right') && (
+        <polygon 
+          points={`${x+w},${y} ${x+w},${y+h} ${x+w+flapW},${y+h-flapW} ${x+w+flapW},${y+flapW}`}
+          fill="rgba(99,102,241,0.04)" 
+          stroke={FS} 
+          strokeWidth={FSW}
+          strokeDasharray="3,2"
+        />
+      )}
+      {lbl && (
+        <text x={x + w / 2} y={y + h / 2} textAnchor="middle" dominantBaseline="middle"
+          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">{lbl}</text>
+      )}
+    </g>
+  )
+}
 
-const FacePoly = ({ pts, lbl, cx, cy }) => (
-  <g>
-    <polygon points={pts} fill={FF} stroke={FS} strokeWidth={FSW} />
-    {lbl && (
-      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
-        fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">{lbl}</text>
-    )}
-  </g>
-)
+const FacePoly = ({ pts, lbl, cx, cy, flaps = [] }) => {
+  const flapW = 8
+  const points = pts.split(' ').map(p => p.split(',').map(Number))
+  
+  const generateFlaps = () => {
+    const flapPaths = []
+    flaps.forEach((flapIdx, i) => {
+      if (flapIdx >= 0 && flapIdx < points.length) {
+        const p1 = points[flapIdx]
+        const p2 = points[(flapIdx + 1) % points.length]
+        
+        // Calculate perpendicular offset
+        const dx = p2[0] - p1[0]
+        const dy = p2[1] - p1[1]
+        const len = Math.sqrt(dx*dx + dy*dy)
+        const nx = -dy / len * flapW
+        const ny = dx / len * flapW
+        
+        const f1x = p1[0] + nx
+        const f1y = p1[1] + ny
+        const f2x = p2[0] + nx
+        const f2y = p2[1] + ny
+        
+        flapPaths.push(
+          <polygon 
+            key={`flap-${i}`}
+            points={`${p1[0]},${p1[1]} ${p2[0]},${p2[1]} ${f2x},${f2y} ${f1x},${f1y}`}
+            fill="rgba(99,102,241,0.04)" 
+            stroke={FS} 
+            strokeWidth={FSW}
+            strokeDasharray="3,2"
+          />
+        )
+      }
+    })
+    return flapPaths
+  }
+
+  return (
+    <g>
+      <polygon points={pts} fill={FF} stroke={FS} strokeWidth={FSW} />
+      {generateFlaps()}
+      {lbl && (
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
+          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">{lbl}</text>
+      )}
+    </g>
+  )
+}
 
 const DimText = ({ x, y, t, anchor = 'middle' }) => (
   <text x={x} y={y} textAnchor={anchor} dominantBaseline="middle"
@@ -83,17 +163,17 @@ const DimText = ({ x, y, t, anchor = 'middle' }) => (
 function netKubus({ a }) {
   const A = a * SC
   const faces = [
-    { x: A,     y: 0,   lbl: 'atas' },
-    { x: 0,     y: A,   lbl: 'kiri' },
-    { x: A,     y: A,   lbl: 'depan' },
-    { x: 2 * A, y: A,   lbl: 'kanan' },
-    { x: 3 * A, y: A,   lbl: 'belakang' },
-    { x: A,     y: 2*A, lbl: 'bawah' },
+    { x: A,     y: 0,   lbl: 'atas', flaps: ['top', 'left', 'right'] },
+    { x: 0,     y: A,   lbl: 'kiri', flaps: ['left'] },
+    { x: A,     y: A,   lbl: 'depan', flaps: [] },
+    { x: 2 * A, y: A,   lbl: 'kanan', flaps: ['right'] },
+    { x: 3 * A, y: A,   lbl: 'belakang', flaps: ['right'] },
+    { x: A,     y: 2*A, lbl: 'bawah', flaps: ['bottom', 'left', 'right'] },
   ]
   return {
-    W: 4 * A, H: 3 * A,
+    W: 4 * A + 16, H: 3 * A + 16,
     els: [
-      ...faces.map((f, i) => <FaceRect key={i} x={f.x} y={f.y} w={A} h={A} lbl={f.lbl} />),
+      ...faces.map((f, i) => <FaceRect key={i} x={f.x} y={f.y} w={A} h={A} lbl={f.lbl} flaps={f.flaps} />),
       <DimText key="d1" x={A + A/2} y={-12} t={`${a} cm`} />,
       <DimText key="d2" x={-12} y={A + A/2} t={`${a}`} anchor="end" />,
     ],
@@ -103,15 +183,15 @@ function netKubus({ a }) {
 function netBalok({ p, l, t }) {
   const P = p * SC, L = l * SC, T = t * SC
   const faces = [
-    { x: L,         y: 0,   w: P, h: L, lbl: 'atas (p×l)' },
-    { x: 0,         y: L,   w: L, h: T, lbl: 'kiri (l×t)' },
-    { x: L,         y: L,   w: P, h: T, lbl: 'depan (p×t)' },
-    { x: L + P,     y: L,   w: L, h: T, lbl: 'kanan (l×t)' },
-    { x: L + P + L, y: L,   w: P, h: T, lbl: 'belakang (p×t)' },
-    { x: L,         y: L+T, w: P, h: L, lbl: 'bawah (p×l)' },
+    { x: L,         y: 0,   w: P, h: L, lbl: 'atas (p×l)', flaps: ['top', 'left', 'right'] },
+    { x: 0,         y: L,   w: L, h: T, lbl: 'kiri (l×t)', flaps: ['left'] },
+    { x: L,         y: L,   w: P, h: T, lbl: 'depan (p×t)', flaps: [] },
+    { x: L + P,     y: L,   w: L, h: T, lbl: 'kanan (l×t)', flaps: ['right'] },
+    { x: L + P + L, y: L,   w: P, h: T, lbl: 'belakang (p×t)', flaps: ['right'] },
+    { x: L,         y: L+T, w: P, h: L, lbl: 'bawah (p×l)', flaps: ['bottom', 'left', 'right'] },
   ]
   return {
-    W: 2*L + 2*P, H: 2*L + T,
+    W: 2*L + 2*P + 16, H: 2*L + T + 16,
     els: [
       ...faces.map((f, i) => <FaceRect key={i} {...f} />),
       <DimText key="dp" x={L + P/2} y={-12} t={`p=${p}cm`} />,
@@ -124,17 +204,19 @@ function netBalok({ p, l, t }) {
 function netPrisma({ a, len }) {
   const A = a * SC, LEN = len * SC
   const ht = A * Math.sqrt(3) / 2
-  const rects = [0, 1, 2].map(i => (
-    <FaceRect key={`r${i}`} x={i * A} y={ht} w={A} h={LEN} lbl={`sisi ${i + 1}`} />
-  ))
+  const rects = [
+    <FaceRect key={`r0`} x={0} y={ht} w={A} h={LEN} lbl={`sisi 1`} flaps={['left']} />,
+    <FaceRect key={`r1`} x={A} y={ht} w={A} h={LEN} lbl={`sisi 2`} flaps={[]} />,
+    <FaceRect key={`r2`} x={2*A} y={ht} w={A} h={LEN} lbl={`sisi 3`} flaps={['right']} />,
+  ]
   const tri1 = `${0},${ht} ${A},${ht} ${A/2},${0}`
   const tri2 = `${2*A},${ht+LEN} ${3*A},${ht+LEN} ${2.5*A},${ht+LEN+ht}`
   return {
-    W: 3 * A, H: 2 * ht + LEN,
+    W: 3 * A + 16, H: 2 * ht + LEN + 16,
     els: [
       ...rects,
-      <FacePoly key="t1" pts={tri1} lbl="alas" cx={A/2} cy={ht * 0.4} />,
-      <FacePoly key="t2" pts={tri2} lbl="alas" cx={2.5*A} cy={ht+LEN+ht*0.6} />,
+      <FacePoly key="t1" pts={tri1} lbl="alas" cx={A/2} cy={ht * 0.4} flaps={[0, 1]} />,
+      <FacePoly key="t2" pts={tri2} lbl="alas" cx={2.5*A} cy={ht+LEN+ht*0.6} flaps={[0, 1]} />,
       <DimText key="da" x={A/2} y={-12} t={`a=${a}cm`} />,
       <DimText key="dl" x={-12} y={ht + LEN/2} t={`l=${len}`} anchor="end" />,
     ],
@@ -144,16 +226,16 @@ function netPrisma({ a, len }) {
 function netLimas({ a, s: sl }) {
   const A = a * SC, S = sl * SC
   const triPts = [
-    { pts: `${S},${S} ${S+A},${S} ${S+A/2},${0}`,         cx: S+A/2,      cy: S*0.42 },
-    { pts: `${S},${S+A} ${S+A},${S+A} ${S+A/2},${S+A+S}`, cx: S+A/2,      cy: S+A+S*0.58 },
-    { pts: `${S},${S} ${S},${S+A} ${0},${S+A/2}`,          cx: S*0.42,     cy: S+A/2 },
-    { pts: `${S+A},${S} ${S+A},${S+A} ${2*S+A},${S+A/2}`, cx: S+A+S*0.58, cy: S+A/2 },
+    { pts: `${S},${S} ${S+A},${S} ${S+A/2},${0}`,         cx: S+A/2,      cy: S*0.42, flaps: [0] },
+    { pts: `${S},${S+A} ${S+A},${S+A} ${S+A/2},${S+A+S}`, cx: S+A/2,      cy: S+A+S*0.58, flaps: [0] },
+    { pts: `${S},${S} ${S},${S+A} ${0},${S+A/2}`,          cx: S*0.42,     cy: S+A/2, flaps: [0] },
+    { pts: `${S+A},${S} ${S+A},${S+A} ${2*S+A},${S+A/2}`, cx: S+A+S*0.58, cy: S+A/2, flaps: [0] },
   ]
   return {
-    W: 2*S + A, H: 2*S + A,
+    W: 2*S + A + 16, H: 2*S + A + 16,
     els: [
-      <FaceRect key="sq" x={S} y={S} w={A} h={A} lbl="alas" />,
-      ...triPts.map((tri, i) => <FacePoly key={`t${i}`} pts={tri.pts} lbl="sisi" cx={tri.cx} cy={tri.cy} />),
+      <FaceRect key="sq" x={S} y={S} w={A} h={A} lbl="alas" flaps={[]} />,
+      ...triPts.map((tri, i) => <FacePoly key={`t${i}`} pts={tri.pts} lbl="sisi" cx={tri.cx} cy={tri.cy} flaps={tri.flaps} />),
       <DimText key="da" x={S + A/2} y={-12} t={`a=${a}cm`} />,
       <DimText key="ds" x={-12} y={S + A/2} t={`s=${sl}`} anchor="end" />,
     ],
@@ -557,6 +639,10 @@ export default function App() {
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-0.5 bg-indigo-500 rounded-full" />
                 <span className="text-xs text-slate-600">Garis lipat</span>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-0.5 border-t-2 border-indigo-400 border-dashed" />
+                <span className="text-xs text-slate-600">Tab lem</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-3 rounded border border-indigo-300" style={{ background: FF }} />
