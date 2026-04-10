@@ -3,11 +3,11 @@ import { useState, useMemo, useRef } from 'react'
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SC = 36
 const PAD = 22
-const FF = 'rgba(0,210,230,0.07)'
-const FS = '#00d4e8'
+const FF = 'rgba(99,102,241,0.08)'
+const FS = '#6366f1'
 const FSW = 1.5
-const DC = '#fbbf24'
-const LC = 'rgba(148,163,184,0.7)'
+const DC = '#f59e0b'
+const LC = 'rgba(100,116,139,0.8)'
 
 // ─── Shapes Config ────────────────────────────────────────────────────────────
 const SHAPES = [
@@ -59,7 +59,7 @@ const FaceRect = ({ x, y, w, h, lbl }) => (
     <rect x={x} y={y} width={w} height={h} fill={FF} stroke={FS} strokeWidth={FSW} />
     {lbl && (
       <text x={x + w / 2} y={y + h / 2} textAnchor="middle" dominantBaseline="middle"
-        fill={LC} fontSize={9} fontFamily="monospace">{lbl}</text>
+        fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">{lbl}</text>
     )}
   </g>
 )
@@ -69,14 +69,14 @@ const FacePoly = ({ pts, lbl, cx, cy }) => (
     <polygon points={pts} fill={FF} stroke={FS} strokeWidth={FSW} />
     {lbl && (
       <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
-        fill={LC} fontSize={9} fontFamily="monospace">{lbl}</text>
+        fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">{lbl}</text>
     )}
   </g>
 )
 
 const DimText = ({ x, y, t, anchor = 'middle' }) => (
   <text x={x} y={y} textAnchor={anchor} dominantBaseline="middle"
-    fill={DC} fontSize={10} fontFamily="monospace" fontWeight="bold">{t}</text>
+    fill={DC} fontSize={10} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="600">{t}</text>
 )
 
 // ─── Net Renderers ────────────────────────────────────────────────────────────
@@ -103,12 +103,12 @@ function netKubus({ a }) {
 function netBalok({ p, l, t }) {
   const P = p * SC, L = l * SC, T = t * SC
   const faces = [
-    { x: L,         y: 0,   w: P, h: L, lbl: 'atas (p\xD7l)' },
-    { x: 0,         y: L,   w: L, h: T, lbl: 'kiri (l\xD7t)' },
-    { x: L,         y: L,   w: P, h: T, lbl: 'depan (p\xD7t)' },
-    { x: L + P,     y: L,   w: L, h: T, lbl: 'kanan (l\xD7t)' },
-    { x: L + P + L, y: L,   w: P, h: T, lbl: 'belakang (p\xD7t)' },
-    { x: L,         y: L+T, w: P, h: L, lbl: 'bawah (p\xD7l)' },
+    { x: L,         y: 0,   w: P, h: L, lbl: 'atas (p×l)' },
+    { x: 0,         y: L,   w: L, h: T, lbl: 'kiri (l×t)' },
+    { x: L,         y: L,   w: P, h: T, lbl: 'depan (p×t)' },
+    { x: L + P,     y: L,   w: L, h: T, lbl: 'kanan (l×t)' },
+    { x: L + P + L, y: L,   w: P, h: T, lbl: 'belakang (p×t)' },
+    { x: L,         y: L+T, w: P, h: L, lbl: 'bawah (p×l)' },
   ]
   return {
     W: 2*L + 2*P, H: 2*L + T,
@@ -173,24 +173,24 @@ function netTabung({ r, h }) {
       <g key="rect">
         <rect x={0} y={rectY} width={circ} height={H} fill={FF} stroke={FS} strokeWidth={FSW} />
         <text x={circ/2} y={rectY + H/2} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="monospace">selimut</text>
+          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">selimut</text>
       </g>,
       <g key="c1">
         <circle cx={circ/2} cy={R} r={R} fill={FF} stroke={FS} strokeWidth={FSW} />
         <text x={circ/2} y={R} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="monospace">tutup</text>
+          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">tutup</text>
       </g>,
       <g key="c2">
         <circle cx={circ/2} cy={rectY + H + gap + R} r={R}
           fill={FF} stroke={FS} strokeWidth={FSW} />
         <text x={circ/2} y={rectY + H + gap + R} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="monospace">alas</text>
+          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">alas</text>
       </g>,
       <line key="gl" x1={0} y1={rectY} x2={circ} y2={rectY}
         stroke={FS} strokeWidth={0.5} strokeDasharray="4,3" opacity={0.25} />,
       <DimText key="dr" x={circ/2 + R + 14} y={R} t={`r=${r}cm`} />,
       <DimText key="dh" x={circ + 10} y={rectY + H/2} t={`h=${h}cm`} anchor="start" />,
-      <DimText key="dc" x={circ/2} y={rectY - 12} t={`2\u03C0r \u2248 ${(2*Math.PI*r).toFixed(1)}cm`} />,
+      <DimText key="dc" x={circ/2} y={rectY - 12} t={`2πr ≈ ${(2*Math.PI*r).toFixed(1)}cm`} />,
     ],
   }
 }
@@ -211,200 +211,173 @@ function netKerucut({ r, h }) {
   const circX = x2 + 18 + R
   const circY = L / 2
   return {
-    W: circX + R + 14, H: Math.max(y1, y2) + 14,
+    W: circX + R + 16,
+    H: Math.max(L, 2*R),
     els: [
-      <path key="sec" d={sPath} fill={FF} stroke={FS} strokeWidth={FSW} />,
+      <g key="sector">
+        <path d={sPath} fill={FF} stroke={FS} strokeWidth={FSW} />
+        <text x={cx - L/3} y={L/2} textAnchor="middle" dominantBaseline="middle"
+          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">selimut</text>
+      </g>,
       <g key="circ">
         <circle cx={circX} cy={circY} r={R} fill={FF} stroke={FS} strokeWidth={FSW} />
         <text x={circX} y={circY} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="monospace">alas</text>
+          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">alas</text>
       </g>,
-      <text key="lblsec" x={cx} y={y1 * 0.5} textAnchor="middle" dominantBaseline="middle"
-        fill={LC} fontSize={9} fontFamily="monospace">selimut</text>,
-      <DimText key="dl" x={cx - 14} y={y1 * 0.65} t={`l\u2248${l_cm.toFixed(1)}cm`} anchor="end" />,
-      <DimText key="dr" x={circX} y={circY + R + 14} t={`r=${r}cm`} />,
+      <DimText key="dr" x={circX + R + 12} y={circY} t={`r=${r}cm`} anchor="start" />,
+      <DimText key="dl" x={cx + L/2} y={-10} t={`s=${l_cm.toFixed(1)}cm`} />,
     ],
   }
 }
 
-function renderNet(id, dims) {
-  switch (id) {
-    case 'kubus':   return netKubus(dims)
-    case 'balok':   return netBalok(dims)
-    case 'prisma':  return netPrisma(dims)
-    case 'limas':   return netLimas(dims)
-    case 'tabung':  return netTabung(dims)
-    case 'kerucut': return netKerucut(dims)
-    default:        return { W: 100, H: 100, els: [] }
-  }
-}
+const netFns = { kubus: netKubus, balok: netBalok, prisma: netPrisma, limas: netLimas, tabung: netTabung, kerucut: netKerucut }
 
-// ─── Info Panel ───────────────────────────────────────────────────────────────
-function InfoPanel({ shapeId, dims }) {
-  const calc = {
-    kubus: d => ({
-      'Luas Permukaan': `6 \xD7 ${d.a}\xB2 = ${6 * d.a * d.a} cm\xB2`,
-      'Volume': `${d.a}\xB3 = ${d.a ** 3} cm\xB3`,
-    }),
-    balok: d => ({
-      'Luas Permukaan': `2(pl+pt+lt) = ${2*(d.p*d.l + d.p*d.t + d.l*d.t)} cm\xB2`,
-      'Volume': `p\xD7l\xD7t = ${d.p * d.l * d.t} cm\xB3`,
-    }),
-    prisma: d => ({
-      'Luas Permukaan': `3al + a\xB2\u221A3 \u2248 ${(3*d.a*d.len + Math.sqrt(3)/2*d.a*d.a).toFixed(1)} cm\xB2`,
-      'Volume': `(\u221A3/4)a\xB2\xD7l \u2248 ${(Math.sqrt(3)/4 * d.a * d.a * d.len).toFixed(1)} cm\xB3`,
-    }),
-    limas: d => {
-      const h = Math.sqrt(Math.max(0, d.s*d.s - (d.a/2)**2))
-      return {
-        'Luas Permukaan': `a\xB2 + 2as = ${(d.a*d.a + 2*d.a*d.s).toFixed(1)} cm\xB2`,
-        'Volume': `(1/3)a\xB2h \u2248 ${(d.a*d.a*h/3).toFixed(1)} cm\xB3`,
-        'Tinggi (h)': `\u2248 ${h.toFixed(2)} cm`,
-      }
-    },
-    tabung: d => ({
-      'Luas Permukaan': `2\u03C0r(r+h) \u2248 ${(2*Math.PI*d.r*(d.r+d.h)).toFixed(1)} cm\xB2`,
-      'Volume': `\u03C0r\xB2h \u2248 ${(Math.PI*d.r*d.r*d.h).toFixed(1)} cm\xB3`,
-      'Keliling alas': `2\u03C0r \u2248 ${(2*Math.PI*d.r).toFixed(1)} cm`,
-    }),
-    kerucut: d => {
-      const l = Math.sqrt(d.r*d.r + d.h*d.h)
-      return {
-        'Luas Permukaan': `\u03C0r(r+l) \u2248 ${(Math.PI*d.r*(d.r+l)).toFixed(1)} cm\xB2`,
-        'Volume': `(1/3)\u03C0r\xB2h \u2248 ${(Math.PI*d.r*d.r*d.h/3).toFixed(1)} cm\xB3`,
-        'Tinggi Miring (l)': `\u2248 ${l.toFixed(2)} cm`,
-      }
-    },
-  }
-  const info = calc[shapeId]?.(dims) ?? {}
+// ─── Corner Marks ────────────────────────────────────────────────────────────
+const CornerMarks = ({ W, H }) => {
+  const mk = 10
+  const cs = [
+    [0, 0], [W, 0], [W, H], [0, H]
+  ]
   return (
-    <div className="rounded border border-cyan-900/40 bg-[#0a1628]/60 p-3 text-xs">
-      <p className="text-[10px] text-cyan-600 uppercase tracking-widest mb-2.5">Hitungan</p>
-      {Object.entries(info).map(([k, v]) => (
-        <div key={k} className="mb-2">
-          <p className="text-slate-500 text-[10px] mb-0.5">{k}</p>
-          <p className="text-amber-300 leading-snug">{v}</p>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ─── Corner Marks ─────────────────────────────────────────────────────────────
-function CornerMarks({ W, H }) {
-  const corners = [[-PAD, -PAD], [-PAD, H + PAD], [W + PAD, -PAD], [W + PAD, H + PAD]]
-  return (
-    <g opacity={0.18} stroke={FS} strokeWidth={0.5}>
-      {corners.map(([x, y], i) => (
-        <g key={i}>
-          <line x1={x - 7} y1={y} x2={x + 7} y2={y} />
-          <line x1={x} y1={y - 7} x2={x} y2={y + 7} />
-        </g>
-      ))}
+    <g stroke={FS} strokeWidth={1.2} opacity={0.15}>
+      {cs.map(([x, y], i) => {
+        const d = `M ${x + (i % 2 ? -mk : mk)} ${y} L ${x} ${y} L ${x} ${y + (i > 1 ? -mk : mk)}`
+        return <path key={i} d={d} fill="none" />
+      })}
     </g>
   )
 }
 
-// ─── Download Bar ─────────────────────────────────────────────────────────────
-function DownloadBar({ onSVG, onPNG, status }) {
-  const isDone = status === 'done'
-  const isBusy = status === 'svg' || status === 'png'
-
-  const DownIcon = () => (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <path d="M6 1v7M3 6l3 3 3-3M1 10h10"
-        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-  const CheckIcon = () => (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-
+// ─── Download Bar ────────────────────────────────────────────────────────────
+const DownloadBar = ({ onSVG, onPNG, status }) => {
+  const ico = (type, st) => {
+    if (st === 'done') return '✓'
+    if (st === type) return '⏳'
+    return type === 'svg' ? '⬇' : '⬇'
+  }
   return (
-    <div className="flex items-center gap-2">
-      {isBusy && (
-        <span className="text-[10px] text-slate-600 animate-pulse mr-1">
-          memproses...
-        </span>
-      )}
-
-      {/* SVG Download */}
+    <div className="flex gap-2">
       <button
-        onClick={onSVG}
-        disabled={isBusy}
-        title="Download sebagai file SVG (vektor, bisa di-scale)"
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-[11px] font-medium transition-all duration-200 ${
-          isDone
-            ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-400'
-            : 'border-cyan-700/40 bg-cyan-950/30 text-cyan-400 hover:bg-cyan-900/40 hover:border-cyan-500/50 hover:text-cyan-300 active:scale-95'
-        } disabled:opacity-40 disabled:cursor-not-allowed`}
-      >
-        {isDone ? <CheckIcon /> : <DownIcon />}
-        SVG
+        onClick={onSVG} disabled={!!status}
+        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
+        style={{ WebkitTapHighlightColor: 'transparent' }}>
+        {ico('svg', status)} SVG
       </button>
-
-      {/* PNG Download */}
       <button
-        onClick={onPNG}
-        disabled={isBusy}
-        title="Download sebagai PNG resolusi tinggi (3x scale)"
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-[11px] font-medium transition-all duration-200 ${
-          isDone
-            ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-400'
-            : 'border-slate-700/50 bg-slate-900/30 text-slate-400 hover:bg-slate-800/40 hover:border-slate-500/50 hover:text-slate-300 active:scale-95'
-        } disabled:opacity-40 disabled:cursor-not-allowed`}
-      >
-        {isDone ? <CheckIcon /> : <DownIcon />}
-        PNG
+        onClick={onPNG} disabled={!!status}
+        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
+        style={{ WebkitTapHighlightColor: 'transparent' }}>
+        {ico('png', status)} PNG
       </button>
     </div>
   )
 }
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
+// ─── Info Panel ──────────────────────────────────────────────────────────────
+const InfoPanel = ({ shapeId, dims }) => {
+  const pi = Math.PI
+  const formulas = {
+    kubus: () => {
+      const a = dims.a
+      const vol = a ** 3
+      const luas = 6 * a ** 2
+      return { vol, luas, volFm: `V = a³ = ${a}³`, luasFm: `L = 6a² = 6×${a}²` }
+    },
+    balok: () => {
+      const { p, l, t } = dims
+      const vol = p * l * t
+      const luas = 2 * (p*l + p*t + l*t)
+      return { vol, luas, volFm: `V = p×l×t = ${p}×${l}×${t}`, luasFm: `L = 2(pl+pt+lt)` }
+    },
+    prisma: () => {
+      const { a, len } = dims
+      const areaBase = (a ** 2 * Math.sqrt(3)) / 4
+      const vol = areaBase * len
+      const keliling = 3 * a
+      const luas = 2 * areaBase + keliling * len
+      return { vol, luas, volFm: `V = ½×a×t×l`, luasFm: `L = 2×Lalas + K×l` }
+    },
+    limas: () => {
+      const { a, s } = dims
+      const h = Math.sqrt(s ** 2 - (a / 2) ** 2)
+      const vol = (a ** 2 * h) / 3
+      const luas = a ** 2 + 4 * (0.5 * a * s)
+      return { vol, luas, volFm: `V = ⅓×a²×t`, luasFm: `L = a² + 4×(½as)` }
+    },
+    tabung: () => {
+      const { r, h } = dims
+      const vol = pi * r ** 2 * h
+      const luas = 2 * pi * r * (r + h)
+      return { vol, luas, volFm: `V = πr²h`, luasFm: `L = 2πr(r+h)` }
+    },
+    kerucut: () => {
+      const { r, h } = dims
+      const s = Math.sqrt(r ** 2 + h ** 2)
+      const vol = (pi * r ** 2 * h) / 3
+      const luas = pi * r * (r + s)
+      return { vol, luas, volFm: `V = ⅓πr²h`, luasFm: `L = πr(r+s)` }
+    },
+  }
+  const res = formulas[shapeId]()
+  return (
+    <div className="border border-indigo-200 bg-indigo-50/50 rounded-lg p-3">
+      <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-2">Rumus & Hasil</p>
+      <div className="space-y-2 text-xs">
+        <div>
+          <div className="text-slate-500 mb-0.5 font-medium">{res.volFm}</div>
+          <div className="text-indigo-700 font-semibold">= {res.vol.toFixed(2)} cm³</div>
+        </div>
+        <div>
+          <div className="text-slate-500 mb-0.5 font-medium">{res.luasFm}</div>
+          <div className="text-indigo-700 font-semibold">= {res.luas.toFixed(2)} cm²</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main App ────────────────────────────────────────────────────────────────
 export default function App() {
   const [shapeId, setShapeId] = useState('kubus')
-  const shape = SHAPES.find(s => s.id === shapeId)
-  const [dims, setDims] = useState(() =>
-    Object.fromEntries(shape.fields.map(f => [f.k, f.def]))
-  )
+  const [dims, setDims] = useState({})
+  const [dlState, setDlState] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const svgRef = useRef(null)
-  const [dlState, setDlState] = useState(null) // null | 'svg' | 'png' | 'done'
+
+  const shape = SHAPES.find(s => s.id === shapeId)
+  const net = useMemo(() => {
+    const fn = netFns[shapeId]
+    const vals = {}
+    shape.fields.forEach(f => { vals[f.k] = dims[f.k] ?? f.def })
+    return fn(vals)
+  }, [shapeId, dims, shape])
 
   function handleShapeChange(id) {
-    const sh = SHAPES.find(s => s.id === id)
     setShapeId(id)
-    setDims(Object.fromEntries(sh.fields.map(f => [f.k, f.def])))
+    setDims({})
+    setMenuOpen(false)
   }
 
   function handleDim(k, v) {
-    const n = parseFloat(v)
-    if (n > 0 && n <= 30) setDims(prev => ({ ...prev, [k]: n }))
+    setDims(prev => ({ ...prev, [k]: parseFloat(v) }))
   }
 
-  const net = useMemo(() => renderNet(shapeId, dims), [shapeId, dims])
-
-  // ── Download helpers ──────────────────────────────────────────────────────
   function getFilename(ext) {
-    const dimStr = Object.entries(dims).map(([k, v]) => `${k}${v}`).join('-')
-    return `jaring-${shapeId}-${dimStr}.${ext}`
+    const vals = shape.fields.map(f => `${f.k}${dims[f.k] ?? f.def}`).join('_')
+    return `net_${shapeId}_${vals}.${ext}`
   }
 
   function buildSVGString() {
     const el = svgRef.current
     if (!el) return null
-    const vb = el.getAttribute('viewBox')
-    const [vx, vy, vw, vh] = vb.split(' ').map(Number)
-    // Self-contained SVG with dark background baked in
+    const [vx, vy, vw, vh] = el.getAttribute('viewBox').split(' ').map(Number)
+    const vb = `${vx} ${vy} ${vw} ${vh}`
     return (
-      `<?xml version="1.0" encoding="UTF-8"?>` +
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${vw}" height="${vh}">` +
-        `<rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="#060b16"/>` +
+        `<rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="#fefefe"/>` +
         `<defs>` +
           `<pattern id="dotgrid" x="0" y="0" width="${SC}" height="${SC}" patternUnits="userSpaceOnUse">` +
-            `<circle cx="${SC/2}" cy="${SC/2}" r="0.6" fill="rgba(0,180,220,0.12)"/>` +
+            `<circle cx="${SC/2}" cy="${SC/2}" r="0.6" fill="rgba(99,102,241,0.08)"/>` +
           `</pattern>` +
         `</defs>` +
         el.innerHTML +
@@ -439,7 +412,7 @@ export default function App() {
     setDlState('png')
     const el = svgRef.current
     const [, , vw, vh] = el.getAttribute('viewBox').split(' ').map(Number)
-    const SCALE = 3 // 3× = print-quality
+    const SCALE = 3
     const canvas = document.createElement('canvas')
     canvas.width = vw * SCALE
     canvas.height = vh * SCALE
@@ -465,77 +438,112 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060b16] text-white select-none"
-      style={{ fontFamily: "'Courier New', monospace" }}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 text-slate-900 select-none"
+      style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif" }}>
 
-      {/* Blueprint grid background */}
-      <div className="fixed inset-0 pointer-events-none" style={{
+      {/* Grid background */}
+      <div className="fixed inset-0 pointer-events-none opacity-30" style={{
         backgroundImage: `
-          linear-gradient(rgba(0,180,220,0.035) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,180,220,0.035) 1px, transparent 1px)
+          linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px)
         `,
         backgroundSize: `${SC}px ${SC}px`,
       }} />
 
-      <div className="relative z-10 flex flex-col" style={{ minHeight: '100vh' }}>
+      <div className="relative z-10 flex flex-col min-h-screen">
 
         {/* ── Header ── */}
-        <header className="px-5 py-3 border-b border-cyan-900/25 flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 border-2 border-cyan-500 rotate-45" />
-            <div className="w-2 h-2 border border-cyan-700 rotate-45 -ml-3" />
+        <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-indigo-100 bg-white/80 backdrop-blur-xl flex items-center gap-3 sticky top-0 z-50 shadow-sm">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-indigo-50 active:bg-indigo-100 transition-colors touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}>
+            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-sm">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white rotate-45" />
+            </div>
+            <span className="text-indigo-700 font-bold tracking-tight text-sm sm:text-base">
+              Jaring-Jaring Bangun Ruang
+            </span>
           </div>
-          <span className="text-cyan-200 font-bold tracking-[0.18em] text-sm">
-            JARING-JARING BANGUN RUANG
-          </span>
-          <div className="ml-auto flex items-center gap-4 text-[10px] text-slate-600">
-            <span>SCALE {SC}px/cm</span>
-            <span className="text-cyan-900">&#9670;</span>
+          
+          <div className="ml-auto hidden sm:flex items-center gap-3 text-[10px] text-slate-400 font-medium">
+            <span>SKALA {SC}px/cm</span>
+            <span className="text-indigo-300">◆</span>
             <span>DEFAULT 10cm</span>
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
 
-          {/* ── Sidebar ── */}
-          <aside className="w-56 border-r border-cyan-900/25 p-4 flex flex-col gap-5 shrink-0 overflow-y-auto">
+          {/* ── Sidebar (Desktop & Mobile Menu) ── */}
+          <aside className={`
+            fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-80 lg:w-64 xl:w-72
+            border-r border-indigo-100 bg-white/95 backdrop-blur-xl
+            lg:backdrop-blur-none
+            p-4 sm:p-5 lg:p-4 flex flex-col gap-5 shrink-0 overflow-y-auto
+            transform transition-transform duration-300 ease-out
+            ${menuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}
+          `}>
+
+            <div className="flex lg:hidden justify-between items-center mb-2">
+              <h3 className="text-sm font-semibold text-slate-700">Menu</h3>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 active:bg-slate-200 touch-manipulation"
+                style={{ WebkitTapHighlightColor: 'transparent' }}>
+                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
             <div>
-              <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-2.5">Pilih Bangun</p>
-              <div className="flex flex-col gap-0.5">
+              <p className="text-[11px] text-slate-500 uppercase tracking-wider mb-3 font-semibold">Pilih Bangun</p>
+              <div className="flex flex-col gap-1.5">
                 {SHAPES.map(sh => (
                   <button
                     key={sh.id}
                     onClick={() => handleShapeChange(sh.id)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-all duration-150 ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-left transition-all duration-200 touch-manipulation ${
                       shapeId === sh.id
-                        ? 'bg-cyan-900/35 text-cyan-300 border border-cyan-700/40'
-                        : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-300'
-                    }`}>
-                    <span className="text-sm">{sh.emoji}</span>
-                    {sh.label}
+                        ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-200'
+                        : 'text-slate-700 hover:bg-indigo-50 active:bg-indigo-100'
+                    }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}>
+                    <span className="text-xl">{sh.emoji}</span>
+                    <span className="font-medium">{sh.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-2.5">
-                Dimensi <span className="text-cyan-800">(cm)</span>
+              <p className="text-[11px] text-slate-500 uppercase tracking-wider mb-3 font-semibold">
+                Dimensi <span className="text-indigo-400">(cm)</span>
               </p>
               {shape.fields.map(f => (
-                <div key={f.k} className="mb-3.5">
-                  <div className="flex justify-between items-baseline mb-1">
-                    <span className="text-[10px] text-slate-500">{f.lbl}</span>
-                    <span className="text-amber-400 text-xs font-bold">{dims[f.k] ?? f.def}</span>
+                <div key={f.k} className="mb-4">
+                  <div className="flex justify-between items-baseline mb-2">
+                    <span className="text-xs text-slate-600 font-medium">{f.lbl}</span>
+                    <span className="text-amber-600 text-sm font-bold">{dims[f.k] ?? f.def}</span>
                   </div>
                   <input
                     type="range" min={1} max={30} step={0.5}
                     value={dims[f.k] ?? f.def}
                     onChange={e => handleDim(f.k, e.target.value)}
-                    className="w-full h-1 accent-cyan-400 cursor-pointer"
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer touch-manipulation"
+                    style={{
+                      WebkitTapHighlightColor: 'transparent',
+                      background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${((dims[f.k] ?? f.def) - 1) / 29 * 100}%, #e0e7ff ${((dims[f.k] ?? f.def) - 1) / 29 * 100}%, #e0e7ff 100%)`
+                    }}
                   />
-                  <div className="flex justify-between text-[9px] text-slate-700 mt-0.5">
+                  <div className="flex justify-between text-[10px] text-slate-400 mt-1.5 font-medium">
                     <span>1</span><span>30</span>
                   </div>
                 </div>
@@ -544,46 +552,53 @@ export default function App() {
 
             <InfoPanel shapeId={shapeId} dims={dims} />
 
-            <div className="mt-auto pt-3 border-t border-cyan-900/20">
-              <p className="text-[9px] text-slate-700 uppercase tracking-widest mb-1.5">Keterangan</p>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-6 h-0.5 bg-cyan-500 opacity-70" />
-                <span className="text-[10px] text-slate-600">Garis lipat</span>
+            <div className="mt-auto pt-4 border-t border-indigo-100">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-semibold">Keterangan</p>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-0.5 bg-indigo-500 rounded-full" />
+                <span className="text-xs text-slate-600">Garis lipat</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-2 rounded-sm border border-cyan-500/50" style={{ background: FF }} />
-                <span className="text-[10px] text-slate-600">Bidang</span>
+                <div className="w-8 h-3 rounded border border-indigo-300" style={{ background: FF }} />
+                <span className="text-xs text-slate-600">Bidang</span>
               </div>
             </div>
           </aside>
 
-          {/* ── Canvas ── */}
-          <main className="flex-1 flex items-center justify-center p-6 overflow-auto bg-[#050a13]">
-            <div className="relative flex flex-col items-center gap-3">
+          {/* Overlay for mobile menu */}
+          {menuOpen && (
+            <div
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
+              onClick={() => setMenuOpen(false)}
+            />
+          )}
 
-              {/* Top bar: shape label + download buttons */}
-              <div className="w-full flex items-center justify-between gap-4">
-                <div className="text-[10px] text-slate-600 uppercase tracking-[0.25em]">
-                  NET &#183; {shape.label}
+          {/* ── Canvas ── */}
+          <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-auto">
+            <div className="relative flex flex-col items-center gap-4 w-full max-w-5xl">
+
+              {/* Top bar */}
+              <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                  Jaring ∙ {shape.label}
                 </div>
                 <DownloadBar onSVG={downloadSVG} onPNG={downloadPNG} status={dlState} />
               </div>
 
               {/* SVG viewport */}
-              <div className="border border-cyan-900/20 rounded bg-[#060c18] p-1">
+              <div className="border border-indigo-200 rounded-2xl bg-white shadow-lg shadow-indigo-100/50 p-2 sm:p-3 w-full overflow-auto">
                 <svg
                   ref={svgRef}
                   viewBox={`${-PAD} ${-PAD} ${net.W + PAD * 2} ${net.H + PAD * 2}`}
+                  className="w-full h-auto"
                   style={{
-                    maxWidth: '100%',
-                    maxHeight: 'calc(100vh - 160px)',
-                    width: `${net.W + PAD * 2}px`,
-                    overflow: 'visible',
+                    maxHeight: 'calc(100vh - 280px)',
+                    minHeight: '300px',
                     display: 'block',
                   }}>
                   <defs>
                     <pattern id="dotgrid" x="0" y="0" width={SC} height={SC} patternUnits="userSpaceOnUse">
-                      <circle cx={SC/2} cy={SC/2} r={0.6} fill="rgba(0,180,220,0.12)" />
+                      <circle cx={SC/2} cy={SC/2} r={0.6} fill="rgba(99,102,241,0.08)" />
                     </pattern>
                   </defs>
                   <rect x={-PAD} y={-PAD} width={net.W + PAD*2} height={net.H + PAD*2}
@@ -593,13 +608,13 @@ export default function App() {
                 </svg>
               </div>
 
-              {/* Dimension summary strip */}
-              <div className="flex gap-4 text-[10px]">
+              {/* Dimension summary */}
+              <div className="flex flex-wrap gap-3 sm:gap-4 text-xs justify-center">
                 {shape.fields.map(f => (
-                  <span key={f.k} className="text-slate-600">
+                  <span key={f.k} className="text-slate-600 font-medium">
                     <span className="text-slate-500">{f.lbl.split(' ')[0]}</span>
                     {' = '}
-                    <span className="text-amber-500">{dims[f.k] ?? f.def} cm</span>
+                    <span className="text-amber-600 font-bold">{dims[f.k] ?? f.def} cm</span>
                   </span>
                 ))}
               </div>
@@ -608,6 +623,54 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      <style>{`
+        input[type="range"] {
+          -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #6366f1;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+          transition: all 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+        }
+        input[type="range"]::-webkit-slider-thumb:active {
+          transform: scale(0.95);
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #6366f1;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+          transition: all 0.15s ease;
+        }
+        input[type="range"]::-moz-range-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+        }
+        input[type="range"]::-moz-range-thumb:active {
+          transform: scale(0.95);
+        }
+        
+        @supports (-webkit-touch-callout: none) {
+          /* iOS Safari specific styles */
+          * {
+            -webkit-tap-highlight-color: transparent;
+          }
+        }
+      `}</style>
     </div>
   )
 }
