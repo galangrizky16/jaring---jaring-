@@ -3,11 +3,13 @@ import { useState, useMemo, useRef } from 'react'
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SC = 36
 const PAD = 22
-const FF = 'rgba(99,102,241,0.08)'
-const FS = '#6366f1'
+const FF = 'rgba(0,210,230,0.07)'
+const FS = '#00d4e8'
 const FSW = 1.5
-const DC = '#f59e0b'
-const LC = 'rgba(100,116,139,0.8)'
+const DC = '#fbbf24'
+const LC = 'rgba(148,163,184,0.7)'
+const FLAP_COLOR = 'rgba(156,163,175,0.15)' // abu-abu untuk flap/lebihan
+const FLAP_STROKE = 'rgba(156,163,175,0.5)'
 
 // ─── Shapes Config ────────────────────────────────────────────────────────────
 const SHAPES = [
@@ -53,147 +55,189 @@ const SHAPES = [
   },
 ]
 
+// ─── Folding Instructions ────────────────────────────────────────────────────
+const FOLD_GUIDES = {
+  kubus: [
+    { step: 1, desc: "Lipat sisi 'kiri' ke atas, tegak lurus ke sisi 'depan'", faces: ['kiri'] },
+    { step: 2, desc: "Lipat sisi 'kanan' ke atas, tegak lurus ke sisi 'depan'", faces: ['kanan'] },
+    { step: 3, desc: "Lipat sisi 'belakang' ke atas, sambungkan dengan sisi 'kiri'", faces: ['belakang'] },
+    { step: 4, desc: "Lipat sisi 'atas' menutup bagian atas kubus", faces: ['atas'] },
+    { step: 5, desc: "Lipat sisi 'bawah' menutup bagian bawah, lem di bagian abu-abu (flap)", faces: ['bawah'] },
+  ],
+  balok: [
+    { step: 1, desc: "Lipat sisi 'kiri (l×t)' tegak lurus ke atas", faces: ['kiri (l×t)'] },
+    { step: 2, desc: "Lipat sisi 'kanan (l×t)' tegak lurus ke atas", faces: ['kanan (l×t)'] },
+    { step: 3, desc: "Lipat sisi 'belakang (p×t)' ke atas, sambungkan ujung-ujungnya", faces: ['belakang (p×t)'] },
+    { step: 4, desc: "Lipat 'atas (p×l)' menutup bagian atas", faces: ['atas (p×l)'] },
+    { step: 5, desc: "Lipat 'bawah (p×l)' menutup bagian bawah, lem di bagian abu-abu (flap)", faces: ['bawah (p×l)'] },
+  ],
+  prisma: [
+    { step: 1, desc: "Lipat ketiga sisi persegi panjang ke atas membentuk segitiga", faces: ['sisi 1', 'sisi 2', 'sisi 3'] },
+    { step: 2, desc: "Pastikan ujung-ujung bertemu membentuk prisma", faces: [] },
+    { step: 3, desc: "Tutup kedua ujung dengan segitiga 'alas', lem di bagian abu-abu (flap)", faces: ['alas'] },
+  ],
+  limas: [
+    { step: 1, desc: "Lipat keempat sisi segitiga ke atas menuju satu titik puncak", faces: ['sisi'] },
+    { step: 2, desc: "Pastikan semua sisi segitiga bertemu di puncak", faces: [] },
+    { step: 3, desc: "Lem tepi segitiga di bagian abu-abu (flap) agar tidak terbuka", faces: [] },
+  ],
+  tabung: [
+    { step: 1, desc: "Gulung 'selimut' menjadi tabung, lem di bagian abu-abu (flap)", faces: ['selimut'] },
+    { step: 2, desc: "Tempelkan lingkaran 'tutup' di ujung atas", faces: ['tutup'] },
+    { step: 3, desc: "Tempelkan lingkaran 'alas' di ujung bawah", faces: ['alas'] },
+  ],
+  kerucut: [
+    { step: 1, desc: "Gulung juring lingkaran membentuk kerucut, lem di bagian abu-abu (flap)", faces: ['selimut'] },
+    { step: 2, desc: "Tempelkan lingkaran 'alas' di bagian bawah kerucut", faces: ['alas'] },
+  ],
+}
+
 // ─── SVG Atoms ───────────────────────────────────────────────────────────────
-const FaceRect = ({ x, y, w, h, lbl, flaps = [] }) => {
-  const flapW = 8 // lebar flap
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} fill={FF} stroke={FS} strokeWidth={FSW} />
-      {/* Flap tabs */}
-      {flaps.includes('top') && (
-        <polygon 
-          points={`${x},${y} ${x+w},${y} ${x+w-flapW},${y-flapW} ${x+flapW},${y-flapW}`}
-          fill="rgba(99,102,241,0.04)" 
-          stroke={FS} 
-          strokeWidth={FSW}
-          strokeDasharray="3,2"
-        />
-      )}
-      {flaps.includes('bottom') && (
-        <polygon 
-          points={`${x},${y+h} ${x+w},${y+h} ${x+w-flapW},${y+h+flapW} ${x+flapW},${y+h+flapW}`}
-          fill="rgba(99,102,241,0.04)" 
-          stroke={FS} 
-          strokeWidth={FSW}
-          strokeDasharray="3,2"
-        />
-      )}
-      {flaps.includes('left') && (
-        <polygon 
-          points={`${x},${y} ${x},${y+h} ${x-flapW},${y+h-flapW} ${x-flapW},${y+flapW}`}
-          fill="rgba(99,102,241,0.04)" 
-          stroke={FS} 
-          strokeWidth={FSW}
-          strokeDasharray="3,2"
-        />
-      )}
-      {flaps.includes('right') && (
-        <polygon 
-          points={`${x+w},${y} ${x+w},${y+h} ${x+w+flapW},${y+h-flapW} ${x+w+flapW},${y+flapW}`}
-          fill="rgba(99,102,241,0.04)" 
-          stroke={FS} 
-          strokeWidth={FSW}
-          strokeDasharray="3,2"
-        />
-      )}
-      {lbl && (
-        <text x={x + w / 2} y={y + h / 2} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">{lbl}</text>
-      )}
-    </g>
-  )
-}
+const FaceRect = ({ x, y, w, h, lbl, num, highlight }) => (
+  <g>
+    <rect x={x} y={y} width={w} height={h} 
+      fill={highlight ? 'rgba(251,191,36,0.15)' : FF} 
+      stroke={highlight ? DC : FS} 
+      strokeWidth={highlight ? 2.5 : FSW} 
+      className="transition-all duration-300"
+    />
+    {num && (
+      <circle cx={x + 12} cy={y + 12} r={9} fill="rgba(251,191,36,0.9)" stroke="#000" strokeWidth={0.5} />
+    )}
+    {num && (
+      <text x={x + 12} y={y + 12} textAnchor="middle" dominantBaseline="middle"
+        fill="#000" fontSize={10} fontWeight="bold" fontFamily="monospace">{num}</text>
+    )}
+    {lbl && (
+      <text x={x + w / 2} y={y + h / 2 + (num ? 8 : 0)} textAnchor="middle" dominantBaseline="middle"
+        fill={LC} fontSize={9} fontFamily="monospace">{lbl}</text>
+    )}
+  </g>
+)
 
-const FacePoly = ({ pts, lbl, cx, cy, flaps = [] }) => {
-  const flapW = 8
-  const points = pts.split(' ').map(p => p.split(',').map(Number))
-  
-  const generateFlaps = () => {
-    const flapPaths = []
-    flaps.forEach((flapIdx, i) => {
-      if (flapIdx >= 0 && flapIdx < points.length) {
-        const p1 = points[flapIdx]
-        const p2 = points[(flapIdx + 1) % points.length]
-        
-        // Calculate perpendicular offset
-        const dx = p2[0] - p1[0]
-        const dy = p2[1] - p1[1]
-        const len = Math.sqrt(dx*dx + dy*dy)
-        const nx = -dy / len * flapW
-        const ny = dx / len * flapW
-        
-        const f1x = p1[0] + nx
-        const f1y = p1[1] + ny
-        const f2x = p2[0] + nx
-        const f2y = p2[1] + ny
-        
-        flapPaths.push(
-          <polygon 
-            key={`flap-${i}`}
-            points={`${p1[0]},${p1[1]} ${p2[0]},${p2[1]} ${f2x},${f2y} ${f1x},${f1y}`}
-            fill="rgba(99,102,241,0.04)" 
-            stroke={FS} 
-            strokeWidth={FSW}
-            strokeDasharray="3,2"
-          />
-        )
-      }
-    })
-    return flapPaths
-  }
-
-  return (
-    <g>
-      <polygon points={pts} fill={FF} stroke={FS} strokeWidth={FSW} />
-      {generateFlaps()}
-      {lbl && (
-        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">{lbl}</text>
-      )}
-    </g>
-  )
-}
+const FacePoly = ({ pts, lbl, cx, cy, num, highlight }) => (
+  <g>
+    <polygon points={pts} 
+      fill={highlight ? 'rgba(251,191,36,0.15)' : FF} 
+      stroke={highlight ? DC : FS} 
+      strokeWidth={highlight ? 2.5 : FSW}
+      className="transition-all duration-300"
+    />
+    {num && (
+      <circle cx={cx - 20} cy={cy - 15} r={9} fill="rgba(251,191,36,0.9)" stroke="#000" strokeWidth={0.5} />
+    )}
+    {num && (
+      <text x={cx - 20} y={cy - 15} textAnchor="middle" dominantBaseline="middle"
+        fill="#000" fontSize={10} fontWeight="bold" fontFamily="monospace">{num}</text>
+    )}
+    {lbl && (
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
+        fill={LC} fontSize={9} fontFamily="monospace">{lbl}</text>
+    )}
+  </g>
+)
 
 const DimText = ({ x, y, t, anchor = 'middle' }) => (
   <text x={x} y={y} textAnchor={anchor} dominantBaseline="middle"
-    fill={DC} fontSize={10} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="600">{t}</text>
+    fill={DC} fontSize={10} fontFamily="monospace" fontWeight="bold">{t}</text>
+)
+
+// Flap/Tab helper - untuk area lem
+const Flap = ({ pts, side }) => (
+  <g>
+    <polygon points={pts} fill={FLAP_COLOR} stroke={FLAP_STROKE} strokeWidth={1} />
+    <text x={pts.split(' ')[0].split(',')[0]} y={pts.split(' ')[0].split(',')[1]} 
+      textAnchor="middle" dominantBaseline="middle"
+      fill="rgba(100,100,100,0.4)" fontSize={7} fontFamily="monospace">lem</text>
+  </g>
 )
 
 // ─── Net Renderers ────────────────────────────────────────────────────────────
-function netKubus({ a }) {
+function netKubus({ a }, showNumbers, highlightFaces, flapSize, showFlaps) {
   const A = a * SC
+  const F = flapSize * SC // flap size
+  
   const faces = [
-    { x: A,     y: 0,   lbl: 'atas', flaps: ['top', 'left', 'right'] },
-    { x: 0,     y: A,   lbl: 'kiri', flaps: ['left'] },
-    { x: A,     y: A,   lbl: 'depan', flaps: [] },
-    { x: 2 * A, y: A,   lbl: 'kanan', flaps: ['right'] },
-    { x: 3 * A, y: A,   lbl: 'belakang', flaps: ['right'] },
-    { x: A,     y: 2*A, lbl: 'bawah', flaps: ['bottom', 'left', 'right'] },
+    { x: A,     y: 0,   lbl: 'atas', num: 4 },
+    { x: 0,     y: A,   lbl: 'kiri', num: 1 },
+    { x: A,     y: A,   lbl: 'depan', num: 0 },
+    { x: 2 * A, y: A,   lbl: 'kanan', num: 2 },
+    { x: 3 * A, y: A,   lbl: 'belakang', num: 3 },
+    { x: A,     y: 2*A, lbl: 'bawah', num: 5 },
   ]
+  
+  // Flaps untuk kubus - di tepi yang perlu direkatkan
+  const flaps = showFlaps ? [
+    // Flap kiri dari kiri
+    { pts: `${0},${A} ${-F},${A+F} ${-F},${2*A-F} ${0},${2*A}`, side: 'left-outer' },
+    // Flap kanan dari belakang
+    { pts: `${4*A},${A} ${4*A+F},${A+F} ${4*A+F},${2*A-F} ${4*A},${2*A}`, side: 'right-outer' },
+    // Flap atas dari atas
+    { pts: `${A},${0} ${A+F},${-F} ${2*A-F},${-F} ${2*A},${0}`, side: 'top-top' },
+    // Flap bawah dari bawah
+    { pts: `${A},${3*A} ${A+F},${3*A+F} ${2*A-F},${3*A+F} ${2*A},${3*A}`, side: 'bottom-bottom' },
+    // Flap samping kiri bawah
+    { pts: `${A},${2*A} ${A},${2*A+F} ${A-F},${2*A+F} ${A-F},${2*A}`, side: 'bottom-left' },
+    // Flap samping kanan bawah
+    { pts: `${2*A},${2*A} ${2*A+F},${2*A} ${2*A+F},${2*A+F} ${2*A},${2*A+F}`, side: 'bottom-right' },
+  ] : []
+  
   return {
-    W: 4 * A + 16, H: 3 * A + 16,
+    W: 4 * A + (showFlaps ? 2*F : 0), 
+    H: 3 * A + (showFlaps ? 2*F : 0),
+    xOffset: showFlaps ? F : 0,
+    yOffset: showFlaps ? F : 0,
     els: [
-      ...faces.map((f, i) => <FaceRect key={i} x={f.x} y={f.y} w={A} h={A} lbl={f.lbl} flaps={f.flaps} />),
+      ...flaps.map((fl, i) => <Flap key={`flap${i}`} {...fl} />),
+      ...faces.map((f, i) => {
+        const isHighlight = highlightFaces.includes(f.lbl)
+        return <FaceRect key={i} x={f.x} y={f.y} w={A} h={A} lbl={f.lbl} 
+          num={showNumbers ? f.num : null} highlight={isHighlight} />
+      }),
       <DimText key="d1" x={A + A/2} y={-12} t={`${a} cm`} />,
-      <DimText key="d2" x={-12} y={A + A/2} t={`${a}`} anchor="end" />,
     ],
   }
 }
 
-function netBalok({ p, l, t }) {
+function netBalok({ p, l, t }, showNumbers, highlightFaces, flapSize, showFlaps) {
   const P = p * SC, L = l * SC, T = t * SC
+  const F = flapSize * SC
+  
   const faces = [
-    { x: L,         y: 0,   w: P, h: L, lbl: 'atas (p×l)', flaps: ['top', 'left', 'right'] },
-    { x: 0,         y: L,   w: L, h: T, lbl: 'kiri (l×t)', flaps: ['left'] },
-    { x: L,         y: L,   w: P, h: T, lbl: 'depan (p×t)', flaps: [] },
-    { x: L + P,     y: L,   w: L, h: T, lbl: 'kanan (l×t)', flaps: ['right'] },
-    { x: L + P + L, y: L,   w: P, h: T, lbl: 'belakang (p×t)', flaps: ['right'] },
-    { x: L,         y: L+T, w: P, h: L, lbl: 'bawah (p×l)', flaps: ['bottom', 'left', 'right'] },
+    { x: L,         y: 0,   w: P, h: L, lbl: 'atas (p×l)', num: 4 },
+    { x: 0,         y: L,   w: L, h: T, lbl: 'kiri (l×t)', num: 1 },
+    { x: L,         y: L,   w: P, h: T, lbl: 'depan (p×t)', num: 0 },
+    { x: L + P,     y: L,   w: L, h: T, lbl: 'kanan (l×t)', num: 2 },
+    { x: L + P + L, y: L,   w: P, h: T, lbl: 'belakang (p×t)', num: 3 },
+    { x: L,         y: L+T, w: P, h: L, lbl: 'bawah (p×l)', num: 5 },
   ]
+  
+  const flaps = showFlaps ? [
+    // Flap kiri luar
+    { pts: `${0},${L} ${-F},${L+F} ${-F},${L+T-F} ${0},${L+T}`, side: 'left' },
+    // Flap kanan dari belakang
+    { pts: `${2*L+2*P},${L} ${2*L+2*P+F},${L+F} ${2*L+2*P+F},${L+T-F} ${2*L+2*P},${L+T}`, side: 'right' },
+    // Flap atas dari atas
+    { pts: `${L},${0} ${L+F},${-F} ${L+P-F},${-F} ${L+P},${0}`, side: 'top-top' },
+    // Flap bawah dari bawah  
+    { pts: `${L},${2*L+T} ${L+F},${2*L+T+F} ${L+P-F},${2*L+T+F} ${L+P},${2*L+T}`, side: 'bottom' },
+    // Flap samping kiri bawah
+    { pts: `${L},${L+T} ${L-F},${L+T} ${L-F},${L+T+F} ${L},${L+T+F}`, side: 'bl' },
+    // Flap samping kanan bawah
+    { pts: `${L+P},${L+T} ${L+P+F},${L+T} ${L+P+F},${L+T+F} ${L+P},${L+T+F}`, side: 'br' },
+  ] : []
+  
   return {
-    W: 2*L + 2*P + 16, H: 2*L + T + 16,
+    W: 2*L + 2*P + (showFlaps ? 2*F : 0), 
+    H: 2*L + T + (showFlaps ? 2*F : 0),
+    xOffset: showFlaps ? F : 0,
+    yOffset: showFlaps ? F : 0,
     els: [
-      ...faces.map((f, i) => <FaceRect key={i} {...f} />),
+      ...flaps.map((fl, i) => <Flap key={`flap${i}`} {...fl} />),
+      ...faces.map((f, i) => {
+        const isHighlight = highlightFaces.includes(f.lbl)
+        return <FaceRect key={i} {...f} num={showNumbers ? f.num : null} highlight={isHighlight} />
+      }),
       <DimText key="dp" x={L + P/2} y={-12} t={`p=${p}cm`} />,
       <DimText key="dl" x={L/2} y={-12} t={`l=${l}cm`} />,
       <DimText key="dt" x={-12} y={L + T/2} t={`t=${t}`} anchor="end" />,
@@ -201,75 +245,164 @@ function netBalok({ p, l, t }) {
   }
 }
 
-function netPrisma({ a, len }) {
+function netPrisma({ a, len }, showNumbers, highlightFaces, flapSize, showFlaps) {
   const A = a * SC, LEN = len * SC
+  const F = flapSize * SC
   const ht = A * Math.sqrt(3) / 2
-  const rects = [
-    <FaceRect key={`r0`} x={0} y={ht} w={A} h={LEN} lbl={`sisi 1`} flaps={['left']} />,
-    <FaceRect key={`r1`} x={A} y={ht} w={A} h={LEN} lbl={`sisi 2`} flaps={[]} />,
-    <FaceRect key={`r2`} x={2*A} y={ht} w={A} h={LEN} lbl={`sisi 3`} flaps={['right']} />,
-  ]
+  
+  const rects = [0, 1, 2].map(i => {
+    const lbl = `sisi ${i + 1}`
+    const isHighlight = highlightFaces.includes(lbl)
+    return <FaceRect key={`r${i}`} x={i * A} y={ht} w={A} h={LEN} lbl={lbl} 
+      num={showNumbers ? i + 1 : null} highlight={isHighlight} />
+  })
+  
   const tri1 = `${0},${ht} ${A},${ht} ${A/2},${0}`
   const tri2 = `${2*A},${ht+LEN} ${3*A},${ht+LEN} ${2.5*A},${ht+LEN+ht}`
+  const isHighlightAlas = highlightFaces.includes('alas')
+  
+  const flaps = showFlaps ? [
+    // Flap vertikal kanan
+    { pts: `${3*A},${ht} ${3*A+F},${ht+F} ${3*A+F},${ht+LEN-F} ${3*A},${ht+LEN}`, side: 'right' },
+    // Flap segitiga atas
+    { pts: `${A/2},${0} ${A/2-F*0.866},${-F*0.5} ${A/2+F*0.866},${-F*0.5}`, side: 'tri-top' },
+    // Flap segitiga bawah
+    { pts: `${2.5*A},${ht+LEN+ht} ${2.5*A-F*0.866},${ht+LEN+ht+F*0.5} ${2.5*A+F*0.866},${ht+LEN+ht+F*0.5}`, side: 'tri-bot' },
+  ] : []
+  
   return {
-    W: 3 * A + 16, H: 2 * ht + LEN + 16,
+    W: 3 * A + (showFlaps ? F*2 : 0), 
+    H: 2 * ht + LEN + (showFlaps ? F : 0),
+    xOffset: showFlaps ? F*0.866 : 0,
+    yOffset: showFlaps ? F*0.5 : 0,
     els: [
+      ...flaps.map((fl, i) => <Flap key={`flap${i}`} {...fl} />),
       ...rects,
-      <FacePoly key="t1" pts={tri1} lbl="alas" cx={A/2} cy={ht * 0.4} flaps={[0, 1]} />,
-      <FacePoly key="t2" pts={tri2} lbl="alas" cx={2.5*A} cy={ht+LEN+ht*0.6} flaps={[0, 1]} />,
+      <FacePoly key="t1" pts={tri1} lbl="alas" cx={A/2} cy={ht * 0.4} 
+        num={showNumbers ? 4 : null} highlight={isHighlightAlas} />,
+      <FacePoly key="t2" pts={tri2} lbl="alas" cx={2.5*A} cy={ht+LEN+ht*0.6} 
+        num={showNumbers ? 5 : null} highlight={isHighlightAlas} />,
       <DimText key="da" x={A/2} y={-12} t={`a=${a}cm`} />,
-      <DimText key="dl" x={-12} y={ht + LEN/2} t={`l=${len}`} anchor="end" />,
     ],
   }
 }
 
-function netLimas({ a, s: sl }) {
+function netLimas({ a, s: sl }, showNumbers, highlightFaces, flapSize, showFlaps) {
   const A = a * SC, S = sl * SC
+  const F = flapSize * SC
+  
   const triPts = [
-    { pts: `${S},${S} ${S+A},${S} ${S+A/2},${0}`,         cx: S+A/2,      cy: S*0.42, flaps: [0] },
-    { pts: `${S},${S+A} ${S+A},${S+A} ${S+A/2},${S+A+S}`, cx: S+A/2,      cy: S+A+S*0.58, flaps: [0] },
-    { pts: `${S},${S} ${S},${S+A} ${0},${S+A/2}`,          cx: S*0.42,     cy: S+A/2, flaps: [0] },
-    { pts: `${S+A},${S} ${S+A},${S+A} ${2*S+A},${S+A/2}`, cx: S+A+S*0.58, cy: S+A/2, flaps: [0] },
+    { pts: `${S},${S} ${S+A},${S} ${S+A/2},${0}`,         cx: S+A/2,      cy: S*0.42, num: 1 },
+    { pts: `${S},${S+A} ${S+A},${S+A} ${S+A/2},${S+A+S}`, cx: S+A/2,      cy: S+A+S*0.58, num: 2 },
+    { pts: `${S},${S} ${S},${S+A} ${0},${S+A/2}`,          cx: S*0.42,     cy: S+A/2, num: 3 },
+    { pts: `${S+A},${S} ${S+A},${S+A} ${2*S+A},${S+A/2}`, cx: S+A+S*0.58, cy: S+A/2, num: 4 },
   ]
+  
+  const isHighlightSisi = highlightFaces.includes('sisi')
+  const isHighlightAlas = highlightFaces.includes('alas')
+  
+  const flaps = showFlaps ? [
+    // Flap segitiga atas
+    { pts: `${S+A/2},${0} ${S+A/2-F*0.5},${-F*0.866} ${S+A/2+F*0.5},${-F*0.866}`, side: 'top' },
+    // Flap segitiga bawah
+    { pts: `${S+A/2},${S+A+S} ${S+A/2-F*0.5},${S+A+S+F*0.866} ${S+A/2+F*0.5},${S+A+S+F*0.866}`, side: 'bot' },
+    // Flap segitiga kiri
+    { pts: `${0},${S+A/2} ${-F*0.866},${S+A/2-F*0.5} ${-F*0.866},${S+A/2+F*0.5}`, side: 'left' },
+    // Flap segitiga kanan
+    { pts: `${2*S+A},${S+A/2} ${2*S+A+F*0.866},${S+A/2-F*0.5} ${2*S+A+F*0.866},${S+A/2+F*0.5}`, side: 'right' },
+  ] : []
+  
   return {
-    W: 2*S + A + 16, H: 2*S + A + 16,
+    W: 2*S + A + (showFlaps ? F*1.732 : 0), 
+    H: 2*S + A + (showFlaps ? F*1.732 : 0),
+    xOffset: showFlaps ? F*0.866 : 0,
+    yOffset: showFlaps ? F*0.866 : 0,
     els: [
-      <FaceRect key="sq" x={S} y={S} w={A} h={A} lbl="alas" flaps={[]} />,
-      ...triPts.map((tri, i) => <FacePoly key={`t${i}`} pts={tri.pts} lbl="sisi" cx={tri.cx} cy={tri.cy} flaps={tri.flaps} />),
+      ...flaps.map((fl, i) => <Flap key={`flap${i}`} {...fl} />),
+      <FaceRect key="sq" x={S} y={S} w={A} h={A} lbl="alas" 
+        num={showNumbers ? 0 : null} highlight={isHighlightAlas} />,
+      ...triPts.map((tri, i) => 
+        <FacePoly key={`t${i}`} pts={tri.pts} lbl="sisi" cx={tri.cx} cy={tri.cy} 
+          num={showNumbers ? tri.num : null} highlight={isHighlightSisi} />
+      ),
       <DimText key="da" x={S + A/2} y={-12} t={`a=${a}cm`} />,
-      <DimText key="ds" x={-12} y={S + A/2} t={`s=${sl}`} anchor="end" />,
     ],
   }
 }
 
-function netTabung({ r, h }) {
+function netTabung({ r, h }, showNumbers, highlightFaces, flapSize, showFlaps) {
   const R = r * SC, H = h * SC
+  const F = flapSize * SC
   const circ = 2 * Math.PI * R
   const gap = 12
   const rectY = R * 2 + gap
   const totalH = rectY + H + gap + R * 2
+  
+  const isHighlightSelimut = highlightFaces.includes('selimut')
+  const isHighlightTutup = highlightFaces.includes('tutup')
+  const isHighlightAlas = highlightFaces.includes('alas')
+  
+  const flaps = showFlaps ? [
+    // Flap vertikal kanan selimut
+    { pts: `${circ},${rectY} ${circ+F},${rectY+F} ${circ+F},${rectY+H-F} ${circ},${rectY+H}`, side: 'selimut-right' },
+    // Flap horizontal atas selimut (untuk tutup)
+    { pts: `${0},${rectY} ${F},${rectY-F} ${circ-F},${rectY-F} ${circ},${rectY}`, side: 'selimut-top' },
+    // Flap horizontal bawah selimut (untuk alas)
+    { pts: `${0},${rectY+H} ${F},${rectY+H+F} ${circ-F},${rectY+H+F} ${circ},${rectY+H}`, side: 'selimut-bot' },
+  ] : []
+  
   return {
-    W: Math.max(circ, 2 * R + 20),
-    H: totalH,
+    W: Math.max(circ, 2 * R + 20) + (showFlaps ? F : 0),
+    H: totalH + (showFlaps ? F*2 : 0),
+    xOffset: 0,
+    yOffset: showFlaps ? F : 0,
     els: [
+      ...flaps.map((fl, i) => <Flap key={`flap${i}`} {...fl} />),
       <g key="rect">
-        <rect x={0} y={rectY} width={circ} height={H} fill={FF} stroke={FS} strokeWidth={FSW} />
+        <rect x={0} y={rectY} width={circ} height={H} 
+          fill={isHighlightSelimut ? 'rgba(251,191,36,0.15)' : FF} 
+          stroke={isHighlightSelimut ? DC : FS} 
+          strokeWidth={isHighlightSelimut ? 2.5 : FSW} />
+        {showNumbers && (
+          <>
+            <circle cx={circ/4} cy={rectY + H/2} r={9} fill="rgba(251,191,36,0.9)" stroke="#000" strokeWidth={0.5} />
+            <text x={circ/4} y={rectY + H/2} textAnchor="middle" dominantBaseline="middle"
+              fill="#000" fontSize={10} fontWeight="bold" fontFamily="monospace">1</text>
+          </>
+        )}
         <text x={circ/2} y={rectY + H/2} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">selimut</text>
+          fill={LC} fontSize={9} fontFamily="monospace">selimut</text>
       </g>,
       <g key="c1">
-        <circle cx={circ/2} cy={R} r={R} fill={FF} stroke={FS} strokeWidth={FSW} />
+        <circle cx={circ/2} cy={R} r={R} 
+          fill={isHighlightTutup ? 'rgba(251,191,36,0.15)' : FF} 
+          stroke={isHighlightTutup ? DC : FS} 
+          strokeWidth={isHighlightTutup ? 2.5 : FSW} />
+        {showNumbers && (
+          <>
+            <circle cx={circ/2 + 20} cy={R - 15} r={9} fill="rgba(251,191,36,0.9)" stroke="#000" strokeWidth={0.5} />
+            <text x={circ/2 + 20} y={R - 15} textAnchor="middle" dominantBaseline="middle"
+              fill="#000" fontSize={10} fontWeight="bold" fontFamily="monospace">2</text>
+          </>
+        )}
         <text x={circ/2} y={R} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">tutup</text>
+          fill={LC} fontSize={9} fontFamily="monospace">tutup</text>
       </g>,
       <g key="c2">
         <circle cx={circ/2} cy={rectY + H + gap + R} r={R}
-          fill={FF} stroke={FS} strokeWidth={FSW} />
+          fill={isHighlightAlas ? 'rgba(251,191,36,0.15)' : FF} 
+          stroke={isHighlightAlas ? DC : FS} 
+          strokeWidth={isHighlightAlas ? 2.5 : FSW} />
+        {showNumbers && (
+          <>
+            <circle cx={circ/2 + 20} cy={rectY + H + gap + R - 15} r={9} fill="rgba(251,191,36,0.9)" stroke="#000" strokeWidth={0.5} />
+            <text x={circ/2 + 20} y={rectY + H + gap + R - 15} textAnchor="middle" dominantBaseline="middle"
+              fill="#000" fontSize={10} fontWeight="bold" fontFamily="monospace">3</text>
+          </>
+        )}
         <text x={circ/2} y={rectY + H + gap + R} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">alas</text>
+          fill={LC} fontSize={9} fontFamily="monospace">alas</text>
       </g>,
-      <line key="gl" x1={0} y1={rectY} x2={circ} y2={rectY}
-        stroke={FS} strokeWidth={0.5} strokeDasharray="4,3" opacity={0.25} />,
       <DimText key="dr" x={circ/2 + R + 14} y={R} t={`r=${r}cm`} />,
       <DimText key="dh" x={circ + 10} y={rectY + H/2} t={`h=${h}cm`} anchor="start" />,
       <DimText key="dc" x={circ/2} y={rectY - 12} t={`2πr ≈ ${(2*Math.PI*r).toFixed(1)}cm`} />,
@@ -277,8 +410,9 @@ function netTabung({ r, h }) {
   }
 }
 
-function netKerucut({ r, h }) {
+function netKerucut({ r, h }, showNumbers, highlightFaces, flapSize, showFlaps) {
   const R = r * SC, H = h * SC
+  const F = flapSize * SC
   const L = Math.sqrt(R*R + H*H)
   const l_cm = Math.sqrt(r*r + h*h)
   const theta = 2 * Math.PI * R / L
@@ -292,152 +426,169 @@ function netKerucut({ r, h }) {
   const sPath = `M ${cx} ${cy} L ${x1} ${y1} A ${L} ${L} 0 ${largeArc} 1 ${x2} ${y2} Z`
   const circX = x2 + 18 + R
   const circY = L / 2
+  
+  const isHighlightSelimut = highlightFaces.includes('selimut')
+  const isHighlightAlas = highlightFaces.includes('alas')
+  
+  const flaps = showFlaps ? [
+    // Flap di sisi kanan juring
+    { pts: `${x2},${y2} ${x2+F*0.5},${y2+F*0.866} ${cx+F*0.5},${cy+F*0.866} ${cx},${cy}`, side: 'sector' },
+  ] : []
+  
   return {
-    W: circX + R + 16,
-    H: Math.max(L, 2*R),
+    W: L * 2 + 30 + 2*R + (showFlaps ? F : 0),
+    H: Math.max(y1, y2) + 10 + (showFlaps ? F : 0),
+    xOffset: 0,
+    yOffset: showFlaps ? F*0.866 : 0,
     els: [
+      ...flaps.map((fl, i) => <Flap key={`flap${i}`} {...fl} />),
       <g key="sector">
-        <path d={sPath} fill={FF} stroke={FS} strokeWidth={FSW} />
+        <path d={sPath} 
+          fill={isHighlightSelimut ? 'rgba(251,191,36,0.15)' : FF} 
+          stroke={isHighlightSelimut ? DC : FS} 
+          strokeWidth={isHighlightSelimut ? 2.5 : FSW} />
+        {showNumbers && (
+          <>
+            <circle cx={cx} cy={L/2} r={9} fill="rgba(251,191,36,0.9)" stroke="#000" strokeWidth={0.5} />
+            <text x={cx} y={L/2} textAnchor="middle" dominantBaseline="middle"
+              fill="#000" fontSize={10} fontWeight="bold" fontFamily="monospace">1</text>
+          </>
+        )}
         <text x={cx - L/3} y={L/2} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">selimut</text>
+          fill={LC} fontSize={9} fontFamily="monospace">selimut</text>
       </g>,
       <g key="circ">
-        <circle cx={circX} cy={circY} r={R} fill={FF} stroke={FS} strokeWidth={FSW} />
+        <circle cx={circX} cy={circY} r={R} 
+          fill={isHighlightAlas ? 'rgba(251,191,36,0.15)' : FF} 
+          stroke={isHighlightAlas ? DC : FS} 
+          strokeWidth={isHighlightAlas ? 2.5 : FSW} />
+        {showNumbers && (
+          <>
+            <circle cx={circX + 15} cy={circY - 15} r={9} fill="rgba(251,191,36,0.9)" stroke="#000" strokeWidth={0.5} />
+            <text x={circX + 15} y={circY - 15} textAnchor="middle" dominantBaseline="middle"
+              fill="#000" fontSize={10} fontWeight="bold" fontFamily="monospace">2</text>
+          </>
+        )}
         <text x={circX} y={circY} textAnchor="middle" dominantBaseline="middle"
-          fill={LC} fontSize={9} fontFamily="system-ui,-apple-system,sans-serif" fontWeight="500">alas</text>
+          fill={LC} fontSize={9} fontFamily="monospace">alas</text>
       </g>,
-      <DimText key="dr" x={circX + R + 12} y={circY} t={`r=${r}cm`} anchor="start" />,
-      <DimText key="dl" x={cx + L/2} y={-10} t={`s=${l_cm.toFixed(1)}cm`} />,
+      <DimText key="dr" x={circX} y={circY + R + 16} t={`r=${r}cm`} />,
+      <DimText key="ds" x={cx + (x2-cx)/2 + 12} y={(y2)/2} t={`s≈${l_cm.toFixed(1)}cm`} />,
     ],
   }
 }
 
-const netFns = { kubus: netKubus, balok: netBalok, prisma: netPrisma, limas: netLimas, tabung: netTabung, kerucut: netKerucut }
-
-// ─── Corner Marks ────────────────────────────────────────────────────────────
-const CornerMarks = ({ W, H }) => {
-  const mk = 10
-  const cs = [
-    [0, 0], [W, 0], [W, H], [0, H]
-  ]
-  return (
-    <g stroke={FS} strokeWidth={1.2} opacity={0.15}>
-      {cs.map(([x, y], i) => {
-        const d = `M ${x + (i % 2 ? -mk : mk)} ${y} L ${x} ${y} L ${x} ${y + (i > 1 ? -mk : mk)}`
-        return <path key={i} d={d} fill="none" />
-      })}
-    </g>
-  )
+const NET_FUNCS = {
+  kubus: netKubus,
+  balok: netBalok,
+  prisma: netPrisma,
+  limas: netLimas,
+  tabung: netTabung,
+  kerucut: netKerucut,
 }
 
-// ─── Download Bar ────────────────────────────────────────────────────────────
-const DownloadBar = ({ onSVG, onPNG, status }) => {
-  const ico = (type, st) => {
-    if (st === 'done') return '✓'
-    if (st === type) return '⏳'
-    return type === 'svg' ? '⬇' : '⬇'
-  }
-  return (
-    <div className="flex gap-2">
-      <button
-        onClick={onSVG} disabled={!!status}
-        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
-        style={{ WebkitTapHighlightColor: 'transparent' }}>
-        {ico('svg', status)} SVG
-      </button>
-      <button
-        onClick={onPNG} disabled={!!status}
-        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
-        style={{ WebkitTapHighlightColor: 'transparent' }}>
-        {ico('png', status)} PNG
-      </button>
-    </div>
-  )
-}
-
-// ─── Info Panel ──────────────────────────────────────────────────────────────
-const InfoPanel = ({ shapeId, dims }) => {
-  const pi = Math.PI
+// ─── Info Panel ───────────────────────────────────────────────────────────────
+function InfoPanel({ shapeId, dims }) {
   const formulas = {
-    kubus: () => {
-      const a = dims.a
-      const vol = a ** 3
-      const luas = 6 * a ** 2
-      return { vol, luas, volFm: `V = a³ = ${a}³`, luasFm: `L = 6a² = 6×${a}²` }
-    },
-    balok: () => {
-      const { p, l, t } = dims
-      const vol = p * l * t
-      const luas = 2 * (p*l + p*t + l*t)
-      return { vol, luas, volFm: `V = p×l×t = ${p}×${l}×${t}`, luasFm: `L = 2(pl+pt+lt)` }
-    },
-    prisma: () => {
-      const { a, len } = dims
-      const areaBase = (a ** 2 * Math.sqrt(3)) / 4
-      const vol = areaBase * len
-      const keliling = 3 * a
-      const luas = 2 * areaBase + keliling * len
-      return { vol, luas, volFm: `V = ½×a×t×l`, luasFm: `L = 2×Lalas + K×l` }
-    },
-    limas: () => {
-      const { a, s } = dims
-      const h = Math.sqrt(s ** 2 - (a / 2) ** 2)
-      const vol = (a ** 2 * h) / 3
-      const luas = a ** 2 + 4 * (0.5 * a * s)
-      return { vol, luas, volFm: `V = ⅓×a²×t`, luasFm: `L = a² + 4×(½as)` }
-    },
-    tabung: () => {
-      const { r, h } = dims
-      const vol = pi * r ** 2 * h
-      const luas = 2 * pi * r * (r + h)
-      return { vol, luas, volFm: `V = πr²h`, luasFm: `L = 2πr(r+h)` }
-    },
-    kerucut: () => {
-      const { r, h } = dims
-      const s = Math.sqrt(r ** 2 + h ** 2)
-      const vol = (pi * r ** 2 * h) / 3
-      const luas = pi * r * (r + s)
-      return { vol, luas, volFm: `V = ⅓πr²h`, luasFm: `L = πr(r+s)` }
-    },
+    kubus: { L: '6a²', V: 'a³' },
+    balok: { L: '2(pl + pt + lt)', V: 'p × l × t' },
+    prisma: { L: '(a·l) + 2·½a·√3a/2', V: '½a·√3a/2·l' },
+    limas: { L: 'a² + 4·½a·s', V: '⅓a²·tinggi' },
+    tabung: { L: '2πr(r+h)', V: 'πr²h' },
+    kerucut: { L: 'πr(r+s)', V: '⅓πr²h' },
   }
-  const res = formulas[shapeId]()
+
+  const f = formulas[shapeId]
+  if (!f) return null
+
   return (
-    <div className="border border-indigo-200 bg-indigo-50/50 rounded-lg p-3">
-      <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-2">Rumus & Hasil</p>
-      <div className="space-y-2 text-xs">
-        <div>
-          <div className="text-slate-500 mb-0.5 font-medium">{res.volFm}</div>
-          <div className="text-indigo-700 font-semibold">= {res.vol.toFixed(2)} cm³</div>
+    <div className="p-3 rounded border border-cyan-900/30 bg-cyan-950/20">
+      <p className="text-[9px] text-slate-600 uppercase tracking-widest mb-1.5">Rumus</p>
+      <div className="space-y-1 text-[11px]">
+        <div className="flex justify-between">
+          <span className="text-slate-500">Luas:</span>
+          <code className="text-cyan-400">{f.L}</code>
         </div>
-        <div>
-          <div className="text-slate-500 mb-0.5 font-medium">{res.luasFm}</div>
-          <div className="text-indigo-700 font-semibold">= {res.luas.toFixed(2)} cm²</div>
+        <div className="flex justify-between">
+          <span className="text-slate-500">Volume:</span>
+          <code className="text-cyan-400">{f.V}</code>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Main App ────────────────────────────────────────────────────────────────
+// ─── Corner Marks ─────────────────────────────────────────────────────────────
+function CornerMarks({ W, H }) {
+  const sz = 6
+  const off = 4
+  return (
+    <g stroke={FS} strokeWidth={0.8} opacity={0.3} fill="none">
+      <path d={`M ${-off} ${-off-sz} L ${-off} ${-off} L ${-off+sz} ${-off}`} />
+      <path d={`M ${W+off-sz} ${-off} L ${W+off} ${-off} L ${W+off} ${-off+sz}`} />
+      <path d={`M ${-off} ${H+off-sz} L ${-off} ${H+off} L ${-off+sz} ${H+off}`} />
+      <path d={`M ${W+off} ${H+off-sz} L ${W+off} ${H+off} L ${W+off-sz} ${H+off}`} />
+    </g>
+  )
+}
+
+// ─── Download Bar ─────────────────────────────────────────────────────────────
+function DownloadBar({ onSVG, onPNG, status }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={onSVG}
+        disabled={status === 'svg' || status === 'done'}
+        className="px-3 py-1.5 text-[10px] uppercase tracking-wider font-bold
+          bg-cyan-900/40 hover:bg-cyan-800/50 text-cyan-300 rounded border border-cyan-700/30
+          disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+        {status === 'svg' ? 'Downloading...' : status === 'done' ? '✓ Done' : 'SVG'}
+      </button>
+      <button
+        onClick={onPNG}
+        disabled={status === 'png' || status === 'done'}
+        className="px-3 py-1.5 text-[10px] uppercase tracking-wider font-bold
+          bg-amber-900/40 hover:bg-amber-800/50 text-amber-300 rounded border border-amber-700/30
+          disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+        {status === 'png' ? 'Rendering...' : status === 'done' ? '✓ Done' : 'PNG'}
+      </button>
+    </div>
+  )
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [shapeId, setShapeId] = useState('kubus')
+  const [shapeId, setShapeId] = useState('balok')
   const [dims, setDims] = useState({})
   const [dlState, setDlState] = useState(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('net')
+  const [currentStep, setCurrentStep] = useState(0)
+  const [showNumbers, setShowNumbers] = useState(false)
+  const [showFlaps, setShowFlaps] = useState(true)
+  const [flapSize, setFlapSize] = useState(1.5) // cm
   const svgRef = useRef(null)
 
   const shape = SHAPES.find(s => s.id === shapeId)
+  const foldGuide = FOLD_GUIDES[shapeId] || []
+  
+  const highlightFaces = currentStep > 0 && currentStep <= foldGuide.length
+    ? foldGuide[currentStep - 1].faces
+    : []
+
   const net = useMemo(() => {
-    const fn = netFns[shapeId]
-    const vals = {}
-    shape.fields.forEach(f => { vals[f.k] = dims[f.k] ?? f.def })
-    return fn(vals)
-  }, [shapeId, dims, shape])
+    const fn = NET_FUNCS[shapeId]
+    if (!fn) return { W: 100, H: 100, els: [], xOffset: 0, yOffset: 0 }
+    const params = {}
+    shape.fields.forEach(f => {
+      params[f.k] = dims[f.k] ?? f.def
+    })
+    return fn(params, showNumbers, highlightFaces, flapSize, showFlaps)
+  }, [shapeId, dims, shape, showNumbers, highlightFaces, flapSize, showFlaps])
 
   function handleShapeChange(id) {
     setShapeId(id)
     setDims({})
-    setMenuOpen(false)
+    setCurrentStep(0)
   }
 
   function handleDim(k, v) {
@@ -446,20 +597,20 @@ export default function App() {
 
   function getFilename(ext) {
     const vals = shape.fields.map(f => `${f.k}${dims[f.k] ?? f.def}`).join('_')
-    return `net_${shapeId}_${vals}.${ext}`
+    return `jaring_${shapeId}_${vals}_flap${flapSize}.${ext}`
   }
 
   function buildSVGString() {
     const el = svgRef.current
     if (!el) return null
-    const [vx, vy, vw, vh] = el.getAttribute('viewBox').split(' ').map(Number)
-    const vb = `${vx} ${vy} ${vw} ${vh}`
+    const vb = el.getAttribute('viewBox').split(' ').map(Number)
+    const [vx, vy, vw, vh] = vb
     return (
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${vw}" height="${vh}">` +
-        `<rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="#fefefe"/>` +
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" width="${vw}" height="${vh}">` +
+        `<rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="#060b16"/>` +
         `<defs>` +
           `<pattern id="dotgrid" x="0" y="0" width="${SC}" height="${SC}" patternUnits="userSpaceOnUse">` +
-            `<circle cx="${SC/2}" cy="${SC/2}" r="0.6" fill="rgba(99,102,241,0.08)"/>` +
+            `<circle cx="${SC/2}" cy="${SC/2}" r="0.6" fill="rgba(0,180,220,0.12)"/>` +
           `</pattern>` +
         `</defs>` +
         el.innerHTML +
@@ -520,243 +671,315 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 text-slate-900 select-none"
-      style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-[#060b16] text-white select-none"
+      style={{ fontFamily: "'Courier New', monospace" }}>
 
-      {/* Grid background */}
-      <div className="fixed inset-0 pointer-events-none opacity-30" style={{
+      <div className="fixed inset-0 pointer-events-none" style={{
         backgroundImage: `
-          linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px)
+          linear-gradient(rgba(0,180,220,0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,180,220,0.035) 1px, transparent 1px)
         `,
         backgroundSize: `${SC}px ${SC}px`,
       }} />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
+      <div className="relative z-10 flex flex-col" style={{ minHeight: '100vh' }}>
 
-        {/* ── Header ── */}
-        <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-indigo-100 bg-white/80 backdrop-blur-xl flex items-center gap-3 sticky top-0 z-50 shadow-sm">
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-indigo-50 active:bg-indigo-100 transition-colors touch-manipulation"
-            style={{ WebkitTapHighlightColor: 'transparent' }}>
-            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-sm">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white rotate-45" />
-            </div>
-            <span className="text-indigo-700 font-bold tracking-tight text-sm sm:text-base">
-              Jaring-Jaring Bangun Ruang
-            </span>
+        <header className="px-5 py-3 border-b border-cyan-900/25 flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 border-2 border-cyan-500 rotate-45" />
+            <div className="w-2 h-2 border border-cyan-700 rotate-45 -ml-3" />
           </div>
-          
-          <div className="ml-auto hidden sm:flex items-center gap-3 text-[10px] text-slate-400 font-medium">
-            <span>SKALA {SC}px/cm</span>
-            <span className="text-indigo-300">◆</span>
-            <span>DEFAULT 10cm</span>
+          <span className="text-cyan-200 font-bold tracking-[0.18em] text-sm">
+            JARING-JARING BANGUN RUANG
+          </span>
+          <div className="ml-auto flex items-center gap-4 text-[10px] text-slate-600">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" 
+                checked={showNumbers} 
+                onChange={(e) => setShowNumbers(e.target.checked)}
+                className="w-3 h-3 accent-cyan-400"
+              />
+              <span>Nomor</span>
+            </label>
+            <span className="text-cyan-900">&#9670;</span>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" 
+                checked={showFlaps} 
+                onChange={(e) => setShowFlaps(e.target.checked)}
+                className="w-3 h-3 accent-amber-400"
+              />
+              <span>Lebihan Lem</span>
+            </label>
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden relative">
+        <div className="flex flex-1 overflow-hidden">
 
-          {/* ── Sidebar (Desktop & Mobile Menu) ── */}
-          <aside className={`
-            fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-80 lg:w-64 xl:w-72
-            border-r border-indigo-100 bg-white/95 backdrop-blur-xl
-            lg:backdrop-blur-none
-            p-4 sm:p-5 lg:p-4 flex flex-col gap-5 shrink-0 overflow-y-auto
-            transform transition-transform duration-300 ease-out
-            ${menuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}
-          `}>
-
-            <div className="flex lg:hidden justify-between items-center mb-2">
-              <h3 className="text-sm font-semibold text-slate-700">Menu</h3>
-              <button
-                onClick={() => setMenuOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 active:bg-slate-200 touch-manipulation"
-                style={{ WebkitTapHighlightColor: 'transparent' }}>
-                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+          <aside className="w-64 border-r border-cyan-900/25 p-4 flex flex-col gap-5 shrink-0 overflow-y-auto">
 
             <div>
-              <p className="text-[11px] text-slate-500 uppercase tracking-wider mb-3 font-semibold">Pilih Bangun</p>
-              <div className="flex flex-col gap-1.5">
+              <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-2.5">Pilih Bangun</p>
+              <div className="flex flex-col gap-0.5">
                 {SHAPES.map(sh => (
                   <button
                     key={sh.id}
                     onClick={() => handleShapeChange(sh.id)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-left transition-all duration-200 touch-manipulation ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-all duration-150 ${
                       shapeId === sh.id
-                        ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-200'
-                        : 'text-slate-700 hover:bg-indigo-50 active:bg-indigo-100'
-                    }`}
-                    style={{ WebkitTapHighlightColor: 'transparent' }}>
-                    <span className="text-xl">{sh.emoji}</span>
-                    <span className="font-medium">{sh.label}</span>
+                        ? 'bg-cyan-900/35 text-cyan-300 border border-cyan-700/40'
+                        : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-300'
+                    }`}>
+                    <span className="text-sm">{sh.emoji}</span>
+                    {sh.label}
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <p className="text-[11px] text-slate-500 uppercase tracking-wider mb-3 font-semibold">
-                Dimensi <span className="text-indigo-400">(cm)</span>
+              <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-2.5">
+                Dimensi <span className="text-cyan-800">(cm)</span>
               </p>
               {shape.fields.map(f => (
-                <div key={f.k} className="mb-4">
-                  <div className="flex justify-between items-baseline mb-2">
-                    <span className="text-xs text-slate-600 font-medium">{f.lbl}</span>
-                    <span className="text-amber-600 text-sm font-bold">{dims[f.k] ?? f.def}</span>
+                <div key={f.k} className="mb-3.5">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <span className="text-[10px] text-slate-500">{f.lbl}</span>
+                    <span className="text-amber-400 text-xs font-bold">{dims[f.k] ?? f.def}</span>
                   </div>
                   <input
                     type="range" min={1} max={30} step={0.5}
                     value={dims[f.k] ?? f.def}
                     onChange={e => handleDim(f.k, e.target.value)}
-                    className="w-full h-2 rounded-full appearance-none cursor-pointer touch-manipulation"
-                    style={{
-                      WebkitTapHighlightColor: 'transparent',
-                      background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${((dims[f.k] ?? f.def) - 1) / 29 * 100}%, #e0e7ff ${((dims[f.k] ?? f.def) - 1) / 29 * 100}%, #e0e7ff 100%)`
-                    }}
+                    className="w-full h-1 accent-cyan-400 cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-400 mt-1.5 font-medium">
+                  <div className="flex justify-between text-[9px] text-slate-700 mt-0.5">
                     <span>1</span><span>30</span>
                   </div>
                 </div>
               ))}
             </div>
 
+            {showFlaps && (
+              <div className="p-3 rounded border border-amber-900/30 bg-amber-950/20">
+                <p className="text-[10px] text-amber-400 uppercase tracking-widest mb-2.5">
+                  ✂️ Ukuran Lebihan Lem
+                </p>
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-[10px] text-slate-500">Lebar flap</span>
+                  <span className="text-amber-300 text-xs font-bold">{flapSize} cm</span>
+                </div>
+                <input
+                  type="range" min={0.5} max={3} step={0.1}
+                  value={flapSize}
+                  onChange={e => setFlapSize(parseFloat(e.target.value))}
+                  className="w-full h-1 accent-amber-400 cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-slate-700 mt-0.5">
+                  <span>0.5</span><span>3</span>
+                </div>
+                <p className="text-[9px] text-slate-600 mt-2 leading-relaxed">
+                  Area abu-abu adalah bagian untuk lem. Semakin besar, semakin mudah direkatkan.
+                </p>
+              </div>
+            )}
+
             <InfoPanel shapeId={shapeId} dims={dims} />
 
-            <div className="mt-auto pt-4 border-t border-indigo-100">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-semibold">Keterangan</p>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-0.5 bg-indigo-500 rounded-full" />
-                <span className="text-xs text-slate-600">Garis lipat</span>
+            <div className="mt-auto pt-3 border-t border-cyan-900/20">
+              <p className="text-[9px] text-slate-700 uppercase tracking-widest mb-1.5">Keterangan</p>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-6 h-2 rounded-sm border border-cyan-500/50" style={{ background: FF }} />
+                <span className="text-[10px] text-slate-600">Bidang utama</span>
               </div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-0.5 border-t-2 border-indigo-400 border-dashed" />
-                <span className="text-xs text-slate-600">Tab lem</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-3 rounded border border-indigo-300" style={{ background: FF }} />
-                <span className="text-xs text-slate-600">Bidang</span>
-              </div>
+              {showFlaps && (
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-2 rounded-sm border border-gray-500/50" style={{ background: FLAP_COLOR }} />
+                  <span className="text-[10px] text-slate-600">Lebihan lem</span>
+                </div>
+              )}
             </div>
           </aside>
 
-          {/* Overlay for mobile menu */}
-          {menuOpen && (
-            <div
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
-              onClick={() => setMenuOpen(false)}
-            />
-          )}
+          <main className="flex-1 flex flex-col overflow-hidden">
+            
+            <div className="border-b border-cyan-900/25 px-6 pt-4 flex gap-1">
+              <button
+                onClick={() => setActiveTab('net')}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-t transition-all ${
+                  activeTab === 'net'
+                    ? 'bg-[#050a13] text-cyan-300 border-t border-l border-r border-cyan-900/40'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}>
+                📐 Pola Jaring
+              </button>
+              <button
+                onClick={() => setActiveTab('guide')}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-t transition-all ${
+                  activeTab === 'guide'
+                    ? 'bg-[#050a13] text-cyan-300 border-t border-l border-r border-cyan-900/40'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}>
+                📖 Panduan Lipat
+              </button>
+            </div>
 
-          {/* ── Canvas ── */}
-          <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-auto">
-            <div className="relative flex flex-col items-center gap-4 w-full max-w-5xl">
+            <div className="flex-1 overflow-auto">
+              {activeTab === 'net' ? (
+                <div className="flex items-center justify-center p-6 bg-[#050a13] h-full">
+                  <div className="relative flex flex-col items-center gap-3">
+                    <div className="w-full flex items-center justify-between gap-4">
+                      <div className="text-[10px] text-slate-600 uppercase tracking-[0.25em]">
+                        NET · {shape.label}
+                      </div>
+                      <DownloadBar onSVG={downloadSVG} onPNG={downloadPNG} status={dlState} />
+                    </div>
 
-              {/* Top bar */}
-              <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
-                  Jaring ∙ {shape.label}
+                    <div className="border border-cyan-900/20 rounded bg-[#060c18] p-1">
+                      <svg
+                        ref={svgRef}
+                        viewBox={`${-PAD - net.xOffset} ${-PAD - net.yOffset} ${net.W + PAD * 2} ${net.H + PAD * 2}`}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: 'calc(100vh - 200px)',
+                          width: `${net.W + PAD * 2}px`,
+                          overflow: 'visible',
+                          display: 'block',
+                        }}>
+                        <defs>
+                          <pattern id="dotgrid" x="0" y="0" width={SC} height={SC} patternUnits="userSpaceOnUse">
+                            <circle cx={SC/2} cy={SC/2} r={0.6} fill="rgba(0,180,220,0.12)" />
+                          </pattern>
+                        </defs>
+                        <rect x={-PAD - net.xOffset} y={-PAD - net.yOffset} 
+                          width={net.W + PAD*2} height={net.H + PAD*2}
+                          fill="url(#dotgrid)" />
+                        <CornerMarks W={net.W} H={net.H} />
+                        {net.els}
+                      </svg>
+                    </div>
+
+                    <div className="flex gap-4 text-[10px]">
+                      {shape.fields.map(f => (
+                        <span key={f.k} className="text-slate-600">
+                          <span className="text-slate-500">{f.lbl.split(' ')[0]}</span>
+                          {' = '}
+                          <span className="text-amber-500">{dims[f.k] ?? f.def} cm</span>
+                        </span>
+                      ))}
+                      {showFlaps && (
+                        <span className="text-slate-600">
+                          <span className="text-slate-500">Flap</span>
+                          {' = '}
+                          <span className="text-amber-500">{flapSize} cm</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <DownloadBar onSVG={downloadSVG} onPNG={downloadPNG} status={dlState} />
-              </div>
+              ) : (
+                <div className="flex h-full">
+                  <div className="w-80 border-r border-cyan-900/25 p-6 overflow-y-auto">
+                    <h3 className="text-sm font-bold text-cyan-300 mb-4 uppercase tracking-wider">
+                      Panduan Melipat {shape.label}
+                    </h3>
+                    
+                    <div className="space-y-3">
+                      {foldGuide.map((step, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentStep(idx + 1)}
+                          className={`w-full text-left p-3 rounded border transition-all ${
+                            currentStep === idx + 1
+                              ? 'bg-amber-900/20 border-amber-600/40 text-amber-200'
+                              : 'bg-cyan-950/20 border-cyan-900/30 text-slate-400 hover:bg-cyan-950/30'
+                          }`}>
+                          <div className="flex items-start gap-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                              currentStep === idx + 1
+                                ? 'bg-amber-500 text-black'
+                                : 'bg-cyan-900/50 text-cyan-400'
+                            }`}>
+                              {step.step}
+                            </div>
+                            <p className="text-xs leading-relaxed">{step.desc}</p>
+                          </div>
+                        </button>
+                      ))}
+                      
+                      <button
+                        onClick={() => setCurrentStep(0)}
+                        className={`w-full text-left p-3 rounded border transition-all ${
+                          currentStep === 0
+                            ? 'bg-cyan-900/20 border-cyan-600/40 text-cyan-200'
+                            : 'bg-slate-950/20 border-slate-800/30 text-slate-500 hover:bg-slate-950/30'
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-700 text-white">
+                            ↺
+                          </div>
+                          <p className="text-xs">Reset / Lihat Semua</p>
+                        </div>
+                      </button>
+                    </div>
 
-              {/* SVG viewport */}
-              <div className="border border-indigo-200 rounded-2xl bg-white shadow-lg shadow-indigo-100/50 p-2 sm:p-3 w-full overflow-auto">
-                <svg
-                  ref={svgRef}
-                  viewBox={`${-PAD} ${-PAD} ${net.W + PAD * 2} ${net.H + PAD * 2}`}
-                  className="w-full h-auto"
-                  style={{
-                    maxHeight: 'calc(100vh - 280px)',
-                    minHeight: '300px',
-                    display: 'block',
-                  }}>
-                  <defs>
-                    <pattern id="dotgrid" x="0" y="0" width={SC} height={SC} patternUnits="userSpaceOnUse">
-                      <circle cx={SC/2} cy={SC/2} r={0.6} fill="rgba(99,102,241,0.08)" />
-                    </pattern>
-                  </defs>
-                  <rect x={-PAD} y={-PAD} width={net.W + PAD*2} height={net.H + PAD*2}
-                    fill="url(#dotgrid)" />
-                  <CornerMarks W={net.W} H={net.H} />
-                  {net.els}
-                </svg>
-              </div>
+                    <div className="mt-6 p-3 bg-cyan-950/30 rounded border border-cyan-900/30">
+                      <p className="text-[10px] text-cyan-400 uppercase tracking-wider mb-2">💡 Tips:</p>
+                      <ul className="text-[11px] text-slate-400 space-y-1.5 list-disc list-inside">
+                        <li>Gunakan penggaris untuk lipatan rapi</li>
+                        <li>Bagian abu-abu adalah tempat lem</li>
+                        <li>Tekan kuat-kuat agar tidak lepas</li>
+                        <li>Biarkan lem kering sebelum digunakan</li>
+                      </ul>
+                    </div>
+                  </div>
 
-              {/* Dimension summary */}
-              <div className="flex flex-wrap gap-3 sm:gap-4 text-xs justify-center">
-                {shape.fields.map(f => (
-                  <span key={f.k} className="text-slate-600 font-medium">
-                    <span className="text-slate-500">{f.lbl.split(' ')[0]}</span>
-                    {' = '}
-                    <span className="text-amber-600 font-bold">{dims[f.k] ?? f.def} cm</span>
-                  </span>
-                ))}
-              </div>
+                  <div className="flex-1 flex items-center justify-center p-6 bg-[#050a13]">
+                    <div className="relative flex flex-col items-center gap-4">
+                      {currentStep > 0 && (
+                        <div className="bg-amber-900/30 border border-amber-600/40 rounded px-4 py-2">
+                          <p className="text-sm text-amber-200 font-bold">
+                            Langkah {currentStep}: {foldGuide[currentStep - 1]?.desc}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="border border-cyan-900/20 rounded bg-[#060c18] p-1">
+                        <svg
+                          viewBox={`${-PAD - net.xOffset} ${-PAD - net.yOffset} ${net.W + PAD * 2} ${net.H + PAD * 2}`}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: 'calc(100vh - 240px)',
+                            width: `${net.W + PAD * 2}px`,
+                            overflow: 'visible',
+                            display: 'block',
+                          }}>
+                          <defs>
+                            <pattern id="dotgrid" x="0" y="0" width={SC} height={SC} patternUnits="userSpaceOnUse">
+                              <circle cx={SC/2} cy={SC/2} r={0.6} fill="rgba(0,180,220,0.12)" />
+                            </pattern>
+                          </defs>
+                          <rect x={-PAD - net.xOffset} y={-PAD - net.yOffset} 
+                            width={net.W + PAD*2} height={net.H + PAD*2}
+                            fill="url(#dotgrid)" />
+                          <CornerMarks W={net.W} H={net.H} />
+                          {net.els}
+                        </svg>
+                      </div>
 
+                      {currentStep === 0 && (
+                        <p className="text-xs text-slate-500 text-center max-w-md">
+                          Pilih langkah di sebelah kiri untuk melihat bagian mana yang harus dilipat.
+                          Bagian yang di-highlight berwarna kuning adalah bagian yang aktif.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </main>
         </div>
       </div>
-
-      <style>{`
-        input[type="range"] {
-          -webkit-appearance: none;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #6366f1;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(99,102,241,0.3);
-          transition: all 0.15s ease;
-        }
-        input[type="range"]::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(99,102,241,0.4);
-        }
-        input[type="range"]::-webkit-slider-thumb:active {
-          transform: scale(0.95);
-        }
-        input[type="range"]::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #6366f1;
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 2px 8px rgba(99,102,241,0.3);
-          transition: all 0.15s ease;
-        }
-        input[type="range"]::-moz-range-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(99,102,241,0.4);
-        }
-        input[type="range"]::-moz-range-thumb:active {
-          transform: scale(0.95);
-        }
-        
-        @supports (-webkit-touch-callout: none) {
-          /* iOS Safari specific styles */
-          * {
-            -webkit-tap-highlight-color: transparent;
-          }
-        }
-      `}</style>
     </div>
   )
 }
